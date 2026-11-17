@@ -20,16 +20,20 @@ Third-party tools and libraries used to build this project. Versions are the one
 | class-variance-authority           | Button style variants                                                 | Apache-2.0 |
 | cn                                 | Merges Tailwind class names (the shadcn helper)                       | MIT        |
 | lucide-react                       | Icons                                                                 | ISC        |
+| @supabase/supabase-js (2.119)      | Supabase client (database, auth, service-role jobs)                   | MIT        |
+| @supabase/ssr (0.12)               | Keeps the Supabase session in cookies for server-rendered pages       | MIT        |
+| zod (4.6)                          | Validating every form and server action input                         | MIT        |
 
 ## Development tools
 
-| Tool                                                                 | Used for         | Licence    |
-| -------------------------------------------------------------------- | ---------------- | ---------- |
-| TypeScript                                                           | Type checking    | Apache-2.0 |
-| ESLint, eslint-config-next, @eslint/eslintrc, eslint-config-prettier | Linting          | MIT        |
-| Prettier, prettier-plugin-tailwindcss                                | Code formatting  | MIT        |
-| Vitest                                                               | Unit tests       | MIT        |
-| @types/node, @types/react, @types/react-dom                          | Type definitions | MIT        |
+| Tool                                                                 | Used for                                                                                   | Licence    |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------- |
+| TypeScript                                                           | Type checking                                                                              | Apache-2.0 |
+| ESLint, eslint-config-next, @eslint/eslintrc, eslint-config-prettier | Linting                                                                                    | MIT        |
+| Prettier, prettier-plugin-tailwindcss                                | Code formatting                                                                            | MIT        |
+| Vitest                                                               | Unit tests                                                                                 | MIT        |
+| @electric-sql/pglite (0.5)                                           | In-process Postgres so the row level security tests run with no Docker or Supabase account | Apache-2.0 |
+| @types/node, @types/react, @types/react-dom                          | Type definitions                                                                           | MIT        |
 
 ## Fonts
 
