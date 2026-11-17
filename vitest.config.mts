@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     // Plain TypeScript logic (matching, caps, state machine) is tested in node.
     environment: "node",
-    include: ["tests/unit/**/*.test.ts"],
+    include: ["tests/unit/**/*.test.ts", "tests/rls/**/*.test.ts"],
   },
   resolve: {
     // Same "@/..." import alias as the app.
