@@ -17,6 +17,6 @@ additional_redirect_urls = ["http://localhost:3000/**"]
 enable_signup = true
 
 [auth.email]
-enable_signup = true
+enabled = true
 # Users must confirm their email before they can sign in.
 enable_confirmations = true

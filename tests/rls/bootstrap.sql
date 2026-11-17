@@ -28,3 +28,25 @@ grant usage on schema public to anon, authenticated, service_role;
 -- migration then narrows them. Mimic that so the test exercises the real thing.
 alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+
+-- A minimal copy of Supabase Storage's two tables, so the storage policies in
+-- the migrations can be tested. The real Storage service (uploads, signed
+-- URLs, size and type limits) is NOT simulated here.
+create schema storage;
+create table storage.buckets (
+  id text primary key,
+  name text not null,
+  public boolean not null default false,
+  file_size_limit bigint,
+  allowed_mime_types text[]
+);
+create table storage.objects (
+  id uuid primary key default gen_random_uuid(),
+  bucket_id text references storage.buckets (id),
+  name text,
+  owner uuid default auth.uid()
+);
+alter table storage.objects enable row level security;
+grant usage on schema storage to anon, authenticated, service_role;
+grant select, insert, update, delete on storage.objects to authenticated, service_role;
+grant select on storage.buckets to authenticated, service_role;
