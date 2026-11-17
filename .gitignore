@@ -1,0 +1,40 @@
+# private working notes
+.work/
+.claude/
+
+# dependencies
+node_modules/
+.pnpm-store/
+
+# env and secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# builds and caches
+.next/
+out/
+dist/
+build/
+coverage/
+.turbo/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+
+# tests
+playwright-report/
+test-results/
+
+# supabase local
+supabase/.branches/
+supabase/.temp/
+
+# logs and OS junk
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
