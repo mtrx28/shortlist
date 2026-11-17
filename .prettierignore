@@ -1,0 +1,7 @@
+node_modules
+.next
+.work
+package-lock.json
+public
+supabase/.temp
+docs/decisions.md

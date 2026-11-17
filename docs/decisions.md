@@ -12,7 +12,7 @@ Facts about markets, laws and free-tier limits were checked at a point in time a
 
 ## D1. What to build: Shortlist, a slow, capped, verified introduction app
 
-Status: PROPOSED
+Status: ACCEPTED
 
 **Context.** eLitmus has 1M+ graduates from 2020-2023 batches, and the pH Test is a trusted identity for them. The brief says not to build a Tinder or Hinge clone. Public data suggests swipe apps are tiring users out: a Redseer analysis reports over 75% of Gen Z users in India feel swiping fatigue and that a swipe app lost paying users in Q3 2025 while serious-intent apps grew paying users; Bumble and Tinder paying users fell through 2025; Hinge itself announced a cap on simultaneous conversations because too many messages go unanswered. The pain is not "too few profiles", it is too many shallow ones, ghosting, fake profiles, and women getting flooded.
 
@@ -46,7 +46,7 @@ Status: PROPOSED
 
 ## D2. Verification: "Verified via eLitmus" as an honest, pluggable integration
 
-Status: PROPOSED
+Status: ACCEPTED
 
 **Context.** The biggest asset is that eLitmus knows who these people are. But I do not have access to their database, and inventing a fake API would be dishonest.
 
@@ -70,7 +70,7 @@ Status: PROPOSED
 
 ## D3. Tech stack: Next.js + Supabase on Vercel
 
-Status: PROPOSED
+Status: ACCEPTED
 
 **Context.** One person, about ten days, free hosting only, a live app evaluators will click through, and a repository I must be able to explain line by line.
 
@@ -97,7 +97,7 @@ Status: PROPOSED
 
 ## D4. Core mechanic: weekly intros, capped chats, kind closure, popularity cap
 
-Status: PROPOSED
+Status: ACCEPTED
 
 **Context.** Swipe apps optimise for engagement, which creates volume without outcomes. I want to optimise for conversations that actually happen and end honestly.
 
@@ -121,7 +121,7 @@ Status: PROPOSED
 
 ## D5. Monetization: pay for convenience and depth, never for safety or visibility
 
-Status: PROPOSED
+Status: ACCEPTED
 
 **Context.** The brief says users do not want to pay. Benchmarks I found suggest about 1% of users on dating apps convert to paid, and paying bases are shrinking on swipe apps. eLitmus also does not want a product that exploits loneliness.
 
@@ -146,7 +146,7 @@ Status: PROPOSED
 
 ## D6. Payments: Razorpay in test mode (fallback: clearly labelled simulated paywall)
 
-Status: PROPOSED
+Status: ACCEPTED
 
 **Context.** A working product should show a working payment path, but I cannot take real money (no free-tier path, and KYC/business registration is out of scope).
 
@@ -167,7 +167,7 @@ Status: PROPOSED
 
 ## D7. Safety: women-first opening, report/block, rate limits, visible moderation
 
-Status: PROPOSED
+Status: ACCEPTED
 
 **Context.** Women in India face harassment and scams on dating apps; fake profiles and extortion gangs are documented in news coverage. If women do not feel safe, the gender ratio collapses and the product fails.
 
@@ -188,7 +188,7 @@ Status: PROPOSED
 
 ## D8. Legal posture: 18+ only, minimal data, real deletion and export
 
-Status: PROPOSED (check with a lawyer before real launch)
+Status: ACCEPTED (check with a lawyer before real launch)
 
 **Context.** India's Digital Personal Data Protection Act 2023 and its Rules (notified November 2025, with obligations phasing in over roughly 18 months; verify the exact dates for each duty) apply to a dating app. The IT Rules 2021 apply to intermediaries.
 
@@ -209,7 +209,7 @@ Status: PROPOSED (check with a lawyer before real launch)
 
 ## D9. Hosting, free-tier survival and the evaluator experience
 
-Status: PROPOSED
+Status: ACCEPTED
 
 **Context.** Evaluators will open the link cold. A sleeping or paused app, an empty app, or a broken login loses the game before it starts.
 
@@ -229,7 +229,7 @@ Status: PROPOSED
 
 ## D10. Naming and brand relationship to eLitmus
 
-Status: PROPOSED
+Status: ACCEPTED
 
 **Context.** The pH Test is a hiring-trust brand. A dating product under the same name could dent trust, but it also benefits from it.
 
