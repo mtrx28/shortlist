@@ -1,35 +1,40 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/server";
+import { homeRedirect } from "@/lib/onboarding";
+import { requireUserProfile } from "@/lib/profile";
 
 // Reads the session, so it must never be prerendered at build time.
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Home | Shortlist" };
 
-// Placeholder for signed-in users. The middleware already sends signed-out
-// visitors to /login; this page reads the profile to prove RLS lets you see yours.
+// Placeholder for signed-in users until the Shortlist screen exists. People
+// who have not finished onboarding are sent there first.
 export default async function HomePage() {
-  const supabase = await createClient();
-  const { data: auth } = supabase
-    ? await supabase.auth.getUser()
-    : { data: { user: null } };
-  const { data: profile } =
-    supabase && auth.user
-      ? await supabase
-          .from("profiles")
-          .select("display_name, verified_email")
-          .eq("id", auth.user.id)
-          .single()
-      : { data: null };
+  const { profile, state } = await requireUserProfile();
+
+  const away = homeRedirect(state);
+  if (away) redirect(away);
 
   return (
     <section className="space-y-4">
       <h1 className="text-2xl font-semibold tracking-tight">
-        Hello{profile ? `, ${profile.display_name}` : ""}
+        Hello, {profile.display_name}
       </h1>
       <p className="text-muted-foreground text-sm">
-        You are signed in. Onboarding and your first Shortlist come next.
+        Your profile is ready. Your first Shortlist comes next.
+      </p>
+      {profile.paused && (
+        <p className="bg-muted rounded-md p-3 text-sm">
+          Your profile is paused, so you will not get new introductions.
+        </p>
+      )}
+      <p className="text-sm">
+        <Link href="/account/profile" className="underline">
+          Edit your profile
+        </Link>
       </p>
       <form action={logoutAction}>
         <Button type="submit" variant="outline">
