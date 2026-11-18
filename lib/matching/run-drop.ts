@@ -5,6 +5,7 @@
 
 import { MATCHING_CONFIG, type MatchingConfig } from "@/config/matching";
 import { ageOn, parseIsoDate } from "@/lib/age";
+import { isPlus } from "@/lib/plus";
 import { buildDrop } from "./build-drop";
 import type {
   DropHistory,
@@ -87,7 +88,7 @@ export function rowToMatchUser(row: ProfileRow, now: Date): MatchUser {
     deleted: row.deleted_at !== null,
     suspended: row.suspended_at !== null,
     onboarded: row.onboarding_completed_at !== null,
-    isPlus: row.plus_until !== null && new Date(row.plus_until) > now,
+    isPlus: isPlus(row.plus_until, now),
     repliesNum: row.reply_rate_num,
     repliesDen: row.reply_rate_den,
   };

@@ -1,17 +1,13 @@
-import { SHORTLIST_CONFIG } from "@/config/shortlist";
+import { entitlements, isPlus } from "@/lib/plus";
 
-// The limit on chats open at the same time. Plus members get more. "Plus" is
-// active while plus_until is in the future.
+// The limit on chats open at the same time. Plus members get more. What Plus
+// means is decided in lib/plus.ts; this file only keeps the names the
+// shortlist code already uses.
 
-export function isPlus(plusUntil: string | Date | null, now: Date): boolean {
-  if (!plusUntil) return false;
-  return new Date(plusUntil).getTime() > now.getTime();
-}
+export { isPlus };
 
 export function chatCap(plusUntil: string | Date | null, now: Date): number {
-  return isPlus(plusUntil, now)
-    ? SHORTLIST_CONFIG.chatCapPlus
-    : SHORTLIST_CONFIG.chatCapFree;
+  return entitlements(plusUntil, now).chatCap;
 }
 
 export function isAtCap(openChats: number, cap: number): boolean {
