@@ -33,6 +33,9 @@ export default async function AdminLayout({
         >
           Verifications
         </Link>
+        <Link href="/admin/drop" className="underline-offset-4 hover:underline">
+          Weekly drop
+        </Link>
         <Link
           href="/home"
           className="text-muted-foreground ml-auto underline-offset-4 hover:underline"
