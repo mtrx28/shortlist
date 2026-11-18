@@ -27,15 +27,17 @@ Third-party tools and libraries used to build this project. Versions are the one
 
 ## Development tools
 
-| Tool                                                                 | Used for                                                                                   | Licence    |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------- |
-| TypeScript                                                           | Type checking                                                                              | Apache-2.0 |
-| ESLint, eslint-config-next, @eslint/eslintrc, eslint-config-prettier | Linting                                                                                    | MIT        |
-| Prettier, prettier-plugin-tailwindcss                                | Code formatting                                                                            | MIT        |
-| Vitest                                                               | Unit tests                                                                                 | MIT        |
-| @electric-sql/pglite (0.5)                                           | In-process Postgres so the row level security tests run with no Docker or Supabase account | Apache-2.0 |
-| tsx (4.23)                                                           | Runs the TypeScript seed script (`npm run seed`)                                           | MIT        |
-| @types/node, @types/react, @types/react-dom                          | Type definitions                                                                           | MIT        |
+| Tool                                                                 | Used for                                                                                      | Licence    |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------- |
+| TypeScript                                                           | Type checking                                                                                 | Apache-2.0 |
+| ESLint, eslint-config-next, @eslint/eslintrc, eslint-config-prettier | Linting                                                                                       | MIT        |
+| Prettier, prettier-plugin-tailwindcss                                | Code formatting                                                                               | MIT        |
+| Vitest                                                               | Unit tests                                                                                    | MIT        |
+| @electric-sql/pglite (0.5)                                           | In-process Postgres so the row level security tests run with no Docker or Supabase account    | Apache-2.0 |
+| tsx (4.23)                                                           | Runs the TypeScript seed script (`npm run seed`)                                              | MIT        |
+| @playwright/test (1.65)                                              | Browser tests in a real Chromium (`npm run test:e2e`); only the Chromium browser is installed | Apache-2.0 |
+| @axe-core/playwright (4.14) and axe-core                             | Automatic accessibility checks inside the browser tests                                       | MPL-2.0    |
+| @types/node, @types/react, @types/react-dom                          | Type definitions                                                                              | MIT        |
 
 ## Demo data
 
@@ -48,5 +50,7 @@ Geist and Geist Mono, loaded through `next/font/google` (SIL Open Font Licence 1
 ## Services
 
 GitHub Actions (CI, the weekly drop schedule and the keep-alive ping; the workflows use only `actions/checkout`, `actions/setup-node` and `curl`). The shortlist rules, the note and contact-detail checks (`lib/shortlist/`, `lib/validators/contact-info.ts`) and the chat-opening database function are my own code with no extra libraries. The matching engine, its seeded random number generator (a standard mulberry32 with an FNV-1a hash, a few lines written out in `lib/matching/random.ts`) and the scoring are my own code with no extra libraries. The conversation rules (`lib/conversation/`), the reply-rate maths, the message rate limit (a count over the messages table) and the chat screens are my own code; the live updates use the Supabase Realtime feature of the Supabase client I already use, with no extra library. Supabase, Vercel and Razorpay will be added here when they are actually wired in.
+
+The Supabase command line tool and the Supabase container images (Postgres, GoTrue, PostgREST, Realtime, Storage, Mailpit) are used only to run a local copy of the backend for the integration and browser tests. They are fetched when `npm run stack:up` runs and are not part of the shipped app (the CLI is Apache-2.0; the services have their own open source licences).
 
 Licences were taken from each package's published metadata; I have not audited transitive dependencies one by one.

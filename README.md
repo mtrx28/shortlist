@@ -16,22 +16,26 @@ Open http://localhost:3000. The health check is at http://localhost:3000/api/hea
 
 ## Scripts
 
-| Command              | What it does                      |
-| -------------------- | --------------------------------- |
-| `npm run dev`        | Start the dev server              |
-| `npm run build`      | Production build                  |
-| `npm run lint`       | ESLint                            |
-| `npm run typecheck`  | TypeScript check, no output files |
-| `npm test`           | Run the unit tests once (Vitest)  |
-| `npm run format`     | Format everything with Prettier   |
-| `npm run seed`       | Create or refresh the demo users  |
-| `npm run seed:reset` | Remove only the demo users        |
+| Command                                           | What it does                                                           |
+| ------------------------------------------------- | ---------------------------------------------------------------------- |
+| `npm run dev`                                     | Start the dev server                                                   |
+| `npm run build`                                   | Production build                                                       |
+| `npm run lint`                                    | ESLint                                                                 |
+| `npm run typecheck`                               | TypeScript check, no output files                                      |
+| `npm test`                                        | Run the unit tests once (Vitest)                                       |
+| `npm run format`                                  | Format everything with Prettier                                        |
+| `npm run seed`                                    | Create or refresh the demo users                                       |
+| `npm run seed:reset`                              | Remove only the demo users                                             |
+| `npm run test:integration`                        | Integration tests against the local Supabase stack (needs Docker)      |
+| `npm run test:e2e`                                | Browser tests with Playwright (needs the stack and the app running)    |
+| `npm run test:all`                                | Starts the local stack and the app, runs both suites, stops everything |
+| `npm run stack:up` / `stack:reset` / `stack:down` | Start, rebuild or stop the local Supabase stack                        |
 
 ## Database and sign-in
 
 The schema is in `supabase/migrations/`: one file for the tables, constraints and the signup trigger, one for row level security (RLS), the rules that say which rows each user may read or write, one for onboarding (the completed flag, limits on profile data, the photo bucket and its policies), one for approving verifications in a single transaction, one that saves a weekly drop (`write_drop`), one for answering intros and opening chats (`decide_intro`), and one for conversations (`send_message`, `record_decision`, `expire_conversations`, the unread marker and realtime). There is no public browse of profiles: you can only read your own, or someone you were shown in an intro or are chatting with. Users cannot change their own `role`, Plus status or verification status, because those columns are not writable for them.
 
-Sign-in uses Supabase Auth (email and password, with a confirmation email). The 18+ check happens in the sign-up server action and again in a database trigger, so calling the API directly does not skip it. Sign-up also needs ticking the Terms and Privacy boxes; the version agreed to is stored with a timestamp. The `/terms` and `/privacy` pages are placeholders for now.
+Sign-in uses Supabase Auth (email and password, with a confirmation email). The 18+ check happens in the sign-up server action and again in a database trigger, so calling the API directly does not skip it. Sign-up also needs ticking the Terms and Privacy boxes; the version agreed to is stored with a timestamp. The `/terms` and `/privacy` pages are drafts I wrote for the demonstration (see "Safety, privacy and the legal pages" below).
 
 To use it with a real Supabase project: create a project, put its URL, anon key and service role key in `.env.local`, apply the migrations (`npx supabase link` then `npx supabase db push`), and in Authentication > Email templates set the confirm and reset links to `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email` (use `type=recovery&next=/reset-password` for the reset template). Without these variables the public pages still work and login says it is not set up.
 
@@ -123,7 +127,7 @@ How a chat lives:
 5. **Reply rate.** Every time a chat leaves "open" (kept, closed or expired), each person who owed a message gets one more in `reply_rate_den`, and one more in `reply_rate_num` if they sent one. The opener always owes the first message; the other person owes a reply only if the opener wrote. Deciding is not part of it.
 6. **Slots.** Kept chats count toward the cap of 3 (5 with Plus). Closed and expired chats free their slot, and matches that were waiting for it get another try.
 
-Sending is limited to 8 messages a minute and 120 an hour per person across all chats, counted from the messages table itself (a serverless app has no memory to count in). Messages are cleaned (control and invisible characters removed, at most 1000 characters) and can only be written through the `send_message` database function, never inserted directly. The first message a person sends in a chat is checked for a link, email, phone number or handle: the screen asks "Are you sure? Keep early chats in the app", and if they send anyway the message is flagged for moderators (a flag people cannot read). The text of messages is never put in events or logs. The "Safety" button in a chat header is a placeholder until report and block are built.
+Sending is limited to 8 messages a minute and 120 an hour per person across all chats, counted from the messages table itself (a serverless app has no memory to count in). Messages are cleaned (control and invisible characters removed, at most 1000 characters) and can only be written through the `send_message` database function, never inserted directly. The first message a person sends in a chat is checked for a link, email, phone number or handle: the screen asks "Are you sure? Keep early chats in the app", and if they send anyway the message is flagged for moderators (a flag people cannot read). The text of messages is never put in events or logs. The safety menu in the chat header does report, block and, for a kept chat, "End this chat" (see below).
 
 Live updates use Supabase Realtime (a subscription to new messages in that chat; row level security means only the two people receive them). If the live connection is not up the browser checks for new messages every 4 seconds, and every 20 seconds as a safety net when it is. Your own messages appear at once and are confirmed by the server; a failed send shows "Not sent" with Try again. Unread markers are stored per person (`conversation_reads`) and the other person can never see them.
 
@@ -133,6 +137,30 @@ Live updates use Supabase Realtime (a subscription to new messages in that chat;
 
 After pulling this, apply the new migration with `npx supabase db push`, and make sure the `messages` table has Realtime switched on (the migration adds it to the `supabase_realtime` publication; Database > Replication in the dashboard shows it).
 
+## Safety, privacy and the legal pages
+
+**Report and block** are on every intro card and in every chat ("Safety" button). Blocking hides the two people from each other for good: neither can read the other's profile or photos, no chat can be written, the matching filter skips them, and any live chat between them ends at once and frees its slot for both (waiting matches are retried). A block is created only by the `block_user` database function (so the daily limit of 20 cannot be skipped). A report has a reason, optional details and an optional "include the last 20 messages" box. The messages are copied by the server from the real conversation, never sent by the browser, so evidence cannot be invented; admins cannot read chats otherwise, and opening a report's attached messages is written to the audit log. A report returns "we have your report, a person will acknowledge it within 24 hours" straight away; limits are 5 reports and 20 blocks a day, counted by the database. A chat both people kept can be ended with "End this chat" and one of the kind notes.
+
+**Admin:** `/admin/reports` is the queue (age, an "overdue" flag against my own draft targets of 24 hours to acknowledge and 15 days to resolve, set in `config/safety.ts`), with Acknowledge, Action (optionally suspending the person) and Dismiss, each written to `audit_log` in the same transaction as the change. A suspended person is hidden everywhere, their chats end, and they see a page that explains it and still offers data export and deletion. `/admin/contact` lists messages from the contact form. The dashboard shows open reports and how many are past the targets.
+
+**Account tools** (`/account/privacy`, `/account/export`, `/account/delete`): consents with their versions and dates (optional ones can be withdrawn; withdrawing the eLitmus consent also removes the verification), a JSON export that contains only your own data (never another person's name, photo or messages; three a day), and account deletion that asks for your password again and a typed word, removes the photo files and the database rows in one transaction, and keeps only a minimal safety record (a salted hash, a reason and a date) when a report against you was open or acted on. What is kept and removed is spelled out on the delete page and in `docs/decisions.md`.
+
+**Pages:** Terms, Privacy, Community rules, Safety tips and a Grievance page with a contact form (rate limited) are linked from the footer. They are drafts for the demonstration and say so.
+
+**Security headers** (`next.config.ts`): a Content Security Policy limited to this site, the Supabase host (including its realtime WebSocket) and Razorpay checkout, HSTS on https, no framing, `nosniff`, a strict referrer policy and a permissions policy. `script-src` still allows inline scripts because Next.js needs them without a per-request nonce; that trade-off is explained in the file.
+
+## Testing
+
+There are three layers, from fast to realistic.
+
+1. `npm test` (about 10 seconds, no Docker): unit tests and the database tests, which run every migration inside an in-process Postgres (PGlite) and act as different users.
+2. `npm run test:integration`: real `supabase-js` clients against a real local Supabase stack (Postgres, auth, PostgREST, Realtime, Storage, mail catcher). It covers sign-up with the confirmation email, row level security from real clients, storage rules, the chat functions under true parallelism, Realtime delivery, the cron endpoints over HTTP, account deletion against real storage, and the seed script.
+3. `npm run test:e2e`: Playwright drives the real app in Chromium (desktop and a phone-sized screen), including an accessibility check with axe-core on the key pages.
+
+To run layers 2 and 3 you need Docker running. `npm run test:all` does everything: starts the stack, rebuilds its database from the migrations, builds and starts the app, runs both suites and stops it all (`--keep-stack` leaves the containers running). The settings of the local stack go into `.env.test.local` (written by `npm run stack:up`, git-ignored). The test tools read only that file and refuse to run if the Supabase address is not on this machine, so they can never touch the real project. The app for the tests is built into `.next-test`, separate from a normal build. A manually started GitHub workflow (`.github/workflows/e2e.yml`, also on pull requests to main) runs the same thing in CI.
+
+To try the demo data on the local stack: `npm run stack:up`, `npm run seed:local`, then `npm run seed:local:reset` to remove it again.
+
 ## Current state
 
-Sign-up, login, logout, password reset, onboarding, photo upload, profile editing, pause and the simulated eLitmus verification exist. The seed script and a first admin area (dashboard and verification approvals) exist. The matching engine and the weekly drop (admin button, scheduled call, stats) exist, and members can answer their shortlist, with the woman-first rule and the chat cap enforced in the database. A chat opens on mutual interest and members can message, decide on day 3, close kindly, and chats expire on a schedule. Report, block, deletion and payments do not exist yet. My product and engineering decisions are in `docs/decisions.md`, and third-party code is listed in `docs/credits.md`.
+Sign-up, login, logout, password reset, onboarding, photo upload, profile editing, pause and the simulated eLitmus verification exist. The seed script and a first admin area (dashboard and verification approvals) exist. The matching engine and the weekly drop (admin button, scheduled call, stats) exist, and members can answer their shortlist, with the woman-first rule and the chat cap enforced in the database. A chat opens on mutual interest and members can message, decide on day 3, close kindly, and chats expire on a schedule. Report, block, the moderation queue, data export, account deletion, consent management and the draft policy pages exist and are covered by the integration and browser tests. Payments do not exist yet. My product and engineering decisions are in `docs/decisions.md`, and third-party code is listed in `docs/credits.md`.
