@@ -7,6 +7,7 @@ import {
 } from "@/components/profile/profile-card";
 import { Countdown } from "@/components/shortlist/countdown";
 import { SafetyMenu } from "@/components/safety/safety-menu";
+import type { MatchDetail } from "@/lib/matching/detail";
 
 // One intro: the person's card, why we matched you, and what you can do.
 // What it says about a decided intro is deliberately neutral: it shows only
@@ -23,6 +24,9 @@ export function IntroCard({
   capText,
   expiresAt,
   renderedAt,
+  detail = null,
+  showPlusHint = false,
+  secondLook = false,
 }: {
   introId: string;
   candidateId: string;
@@ -35,6 +39,9 @@ export function IntroCard({
   capText: string;
   expiresAt: string;
   renderedAt: string;
+  detail?: MatchDetail | null; // the Plus breakdown, when the member has Plus
+  showPlusHint?: boolean; // free members get a pointer to Plus
+  secondLook?: boolean; // a brought-back intro (its time limit reads differently)
 }) {
   return (
     <li className="space-y-3">
@@ -54,6 +61,29 @@ export function IntroCard({
               <li key={r}>{r}</li>
             ))}
           </ul>
+          {detail && (
+            <div
+              className="border-border mt-3 space-y-1 border-t pt-3"
+              data-testid="match-detail"
+            >
+              <p className="text-sm font-medium">{detail.bandText}</p>
+              <ul className="space-y-1 text-sm">
+                {detail.lines.map((l) => (
+                  <li key={l.label}>
+                    <span className="font-medium">{l.label}:</span> {l.text}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {!detail && showPlusHint && (
+            <p className="text-muted-foreground text-xs">
+              <Link href="/plus" className="underline">
+                Plus
+              </Link>{" "}
+              shows the full breakdown.
+            </p>
+          )}
         </section>
       )}
 
@@ -61,8 +91,10 @@ export function IntroCard({
         {status === "new" && (
           <p className="text-muted-foreground text-xs">
             Answer within{" "}
-            <Countdown target={expiresAt} renderedAt={renderedAt} />, when the
-            next drop arrives.
+            <Countdown target={expiresAt} renderedAt={renderedAt} />
+            {secondLook
+              ? ", when this second look ends."
+              : ", when the next drop arrives."}
           </p>
         )}
 

@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Countdown } from "@/components/shortlist/countdown";
 import { IntroCard } from "@/components/shortlist/intro-card";
+import { SecondLook } from "@/components/shortlist/second-look";
+import { SECOND_LOOK } from "@/config/plans";
+import { loadMatchDetails } from "@/lib/matching/detail-service";
+import { entitlements } from "@/lib/plus";
 import { logEvent } from "@/lib/events";
 import { homeRedirect } from "@/lib/onboarding";
 import { requireUserProfile, signedPhotos } from "@/lib/profile";
-import { capStatusText, chatCap, isAtCap } from "@/lib/shortlist/caps";
+import { capStatusText, isAtCap } from "@/lib/shortlist/caps";
 import type { IntroStatus } from "@/lib/shortlist/decide";
 import { retryWaitingChats } from "@/lib/shortlist/service";
 import { nextDropAt } from "@/lib/shortlist/time";
@@ -61,7 +63,8 @@ export default async function ShortlistPage() {
     .select("plus_until")
     .eq("id", userId)
     .maybeSingle();
-  const cap = chatCap((plus?.plus_until as string | null) ?? null, now);
+  const rights = entitlements((plus?.plus_until as string | null) ?? null, now);
+  const cap = rights.chatCap;
 
   // A match that was waiting for a free slot gets another try.
   let liveChats = chats ?? [];
@@ -106,10 +109,47 @@ export default async function ShortlistPage() {
     if (intro.first_view) await logEvent("intro_viewed", userId);
   }
 
+  // Second look (a Plus perk): intros brought back, and ones that could be.
+  type Eligible = {
+    id: string;
+    candidate_id: string;
+    week_start: string;
+    status: string;
+  };
+  type Revived = MyIntro & { revived_until: string };
+  const { data: secondRaw } = await supabase.rpc("my_second_looks", {
+    p_lookback_days: SECOND_LOOK.lookbackDays,
+  });
+  const second = (secondRaw ?? {
+    used_at: null,
+    eligible: [],
+    revived: [],
+  }) as {
+    used_at: string | null;
+    eligible: Eligible[];
+    revived: Revived[];
+  };
+  // A brought-back intro from the current week is already in the main list.
+  const mainIds = new Set(list.intros.map((i) => i.id));
+  const revived = second.revived.filter((r) => !mainIds.has(r.id));
+
   const showCards = view.screen === "intros" || view.screen === "all_decided";
+  const shown = [...(showCards ? list.intros : []), ...revived];
   let cards: React.ReactNode = null;
-  if (showCards) {
-    const ids = list.intros.map((i) => i.candidate_id);
+  let revivedCards: React.ReactNode = null;
+  let eligibleList: {
+    id: string;
+    name: string;
+    city: string | null;
+    week: string;
+  }[] = [];
+  if (shown.length > 0 || second.eligible.length > 0) {
+    const ids = [
+      ...new Set([
+        ...shown.map((i) => i.candidate_id),
+        ...second.eligible.map((e) => e.candidate_id),
+      ]),
+    ];
     const { data: people } = await supabase
       .from("profiles")
       .select(
@@ -129,50 +169,83 @@ export default async function ShortlistPage() {
         ages.set(id, typeof data === "number" ? data : null);
       }),
     );
+    // The Plus breakdown, built on the server from both people answers.
+    const details =
+      rights.reasonsDetail && service
+        ? await loadMatchDetails(
+            service,
+            userId,
+            shown.map((i) => i.candidate_id),
+            now,
+          )
+        : new Map();
 
-    const expiresAt = view.expiresAt ? view.expiresAt.toISOString() : "";
+    eligibleList = second.eligible.flatMap((e) => {
+      const p = byId.get(e.candidate_id);
+      return p
+        ? [{ id: e.id, name: p.display_name, city: p.city, week: e.week_start }]
+        : [];
+    });
+
     const renderedAt = now.toISOString();
-    cards = (
-      <ul className="space-y-10">
-        {list.intros.map((intro) => {
-          const person = byId.get(intro.candidate_id);
-          // Someone who was blocked, suspended or deleted since the drop
-          // is no longer readable, so their card is left out.
-          if (!person) return null;
-          return (
-            <IntroCard
-              key={intro.id}
-              introId={intro.id}
-              candidateId={person.id}
-              status={intro.status}
-              reasons={intro.reasons}
-              myNote={intro.note}
-              chatId={chatWith.get(person.id) ?? null}
-              atCap={atCap}
-              capText={capText}
-              expiresAt={expiresAt}
-              renderedAt={renderedAt}
-              profile={{
-                displayName: person.display_name,
-                age: ages.get(person.id) ?? null,
-                city: person.city,
-                intent: person.intent,
-                batchYear: person.batch_year,
-                occupation: person.occupation,
-                collegeTier: person.college_tier,
-                elitmusVerified: person.elitmus_status === "verified",
-                prompts: person.bio_prompts ?? [],
-                interests: person.interests ?? [],
-                photoUrls: (person.photos ?? []).flatMap((p) => {
-                  const url = urlOf.get(p);
-                  return url ? [url] : [];
-                }),
-              }}
-            />
-          );
-        })}
-      </ul>
-    );
+    const card = (intro: MyIntro, expiresAt: string, isSecond: boolean) => {
+      const person = byId.get(intro.candidate_id);
+      // Someone who was blocked, suspended or deleted since the drop
+      // is no longer readable, so their card is left out.
+      if (!person) return null;
+      return (
+        <IntroCard
+          key={intro.id}
+          introId={intro.id}
+          candidateId={person.id}
+          status={intro.status}
+          reasons={intro.reasons}
+          myNote={intro.note}
+          chatId={chatWith.get(person.id) ?? null}
+          atCap={atCap}
+          capText={capText}
+          expiresAt={expiresAt}
+          renderedAt={renderedAt}
+          detail={details.get(person.id) ?? null}
+          showPlusHint={!rights.isPlus}
+          secondLook={isSecond}
+          profile={{
+            displayName: person.display_name,
+            age: ages.get(person.id) ?? null,
+            city: person.city,
+            intent: person.intent,
+            batchYear: person.batch_year,
+            occupation: person.occupation,
+            collegeTier: person.college_tier,
+            elitmusVerified: person.elitmus_status === "verified",
+            prompts: person.bio_prompts ?? [],
+            interests: person.interests ?? [],
+            photoUrls: (person.photos ?? []).flatMap((p) => {
+              const url = urlOf.get(p);
+              return url ? [url] : [];
+            }),
+          }}
+        />
+      );
+    };
+
+    if (showCards) {
+      const expiresAt = view.expiresAt ? view.expiresAt.toISOString() : "";
+      cards = (
+        <ul className="space-y-10">
+          {list.intros.map((intro) => card(intro, expiresAt, false))}
+        </ul>
+      );
+    }
+    if (revived.length > 0) {
+      revivedCards = (
+        <ul className="space-y-10">
+          {revived.map((intro) =>
+            card(intro, new Date(intro.revived_until).toISOString(), true),
+          )}
+        </ul>
+      );
+    }
   }
 
   const nextDrop = nextDropAt(now);
@@ -261,23 +334,21 @@ export default async function ShortlistPage() {
 
       {cards}
 
-      <section
-        aria-label="Second look"
-        className="space-y-2 rounded-lg border border-dashed p-4"
-      >
-        <h2 className="flex items-center gap-2 text-base font-medium">
-          <Lock className="size-4" aria-hidden />
-          Second look
-        </h2>
-        <p className="text-muted-foreground text-sm">
-          Changed your mind about an intro you passed on or let expire? With
-          Plus you will get one second look a month. Coming with Plus; it is not
-          available yet.
-        </p>
-        <Button type="button" variant="outline" disabled>
-          Second look (coming with Plus)
-        </Button>
-      </section>
+      {revivedCards && (
+        <section aria-label="Brought back by second look" className="space-y-6">
+          <h2 className="text-base font-medium">Your second look</h2>
+          {revivedCards}
+        </section>
+      )}
+
+      <SecondLook
+        isPlus={rights.isPlus}
+        usedAt={second.used_at}
+        perDays={SECOND_LOOK.perDays}
+        revivedHours={SECOND_LOOK.revivedHours}
+        options={eligibleList}
+        now={now.toISOString()}
+      />
     </section>
   );
 }
