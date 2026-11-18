@@ -29,7 +29,7 @@ Open http://localhost:3000. The health check is at http://localhost:3000/api/hea
 
 ## Database and sign-in
 
-The schema is in `supabase/migrations/`: one file for the tables, constraints and the signup trigger, one for row level security (RLS), the rules that say which rows each user may read or write, one for onboarding (the completed flag, limits on profile data, the photo bucket and its policies), one for approving verifications in a single transaction, one that saves a weekly drop (`write_drop`), and one for answering intros and opening chats (`decide_intro`). There is no public browse of profiles: you can only read your own, or someone you were shown in an intro or are chatting with. Users cannot change their own `role`, Plus status or verification status, because those columns are not writable for them.
+The schema is in `supabase/migrations/`: one file for the tables, constraints and the signup trigger, one for row level security (RLS), the rules that say which rows each user may read or write, one for onboarding (the completed flag, limits on profile data, the photo bucket and its policies), one for approving verifications in a single transaction, one that saves a weekly drop (`write_drop`), one for answering intros and opening chats (`decide_intro`), and one for conversations (`send_message`, `record_decision`, `expire_conversations`, the unread marker and realtime). There is no public browse of profiles: you can only read your own, or someone you were shown in an intro or are chatting with. Users cannot change their own `role`, Plus status or verification status, because those columns are not writable for them.
 
 Sign-in uses Supabase Auth (email and password, with a confirmation email). The 18+ check happens in the sign-up server action and again in a database trigger, so calling the API directly does not skip it. Sign-up also needs ticking the Terms and Privacy boxes; the version agreed to is stored with a timestamp. The `/terms` and `/privacy` pages are placeholders for now.
 
@@ -58,12 +58,12 @@ The RLS tests run the migrations in an in-process Postgres (PGlite) and act as d
 
 Demo logins (the password is the value of `DEMO_PASSWORD`):
 
-| Email                       | Who                   | What it shows                                                          |
-| --------------------------- | --------------------- | ---------------------------------------------------------------------- |
-| `priya@demo.shortlist.test` | Woman, Bengaluru      | A full shortlist of three, and a chat in progress                      |
-| `arjun@demo.shortlist.test` | Man, Pune             | A chat near its 72 hour limit, and a woman who already showed interest |
-| `neha@demo.shortlist.test`  | New member, Hyderabad | A finished profile with nothing yet (the empty state)                  |
-| `admin@demo.shortlist.test` | Admin                 | The admin dashboard and verification approvals                         |
+| Email                       | Who                   | What it shows                                                                                                                                                         |
+| --------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `priya@demo.shortlist.test` | Woman, Bengaluru      | A full shortlist of three, and a chat in progress                                                                                                                     |
+| `arjun@demo.shortlist.test` | Man, Pune             | A chat with about 4 hours left where Sneha wrote and he has not replied (reminder banner; replying opens the day-3 decision), and a woman who already showed interest |
+| `neha@demo.shortlist.test`  | New member, Hyderabad | A finished profile with nothing yet (the empty state)                                                                                                                 |
+| `admin@demo.shortlist.test` | Admin                 | The admin dashboard and verification approvals                                                                                                                        |
 
 The other demo members (for example `meera@`, `rohan@`, `lakshmi@` on the same domain) use the same password. To see onboarding, sign up with a new address.
 
@@ -88,21 +88,21 @@ The drop is saved by a database function (`write_drop`, only the server can call
 To run it:
 
 - **From the admin area:** `/admin/drop`, button "Run drop now". It shows how many people were considered, how many intros were created, the share of people with at least one intro, how many shortlists the most and least shown person appear in, and why some people got none (counts only).
-- **On a schedule:** `.github/workflows/weekly-drop.yml` calls `POST /api/cron/drop` every Sunday at 20:00 India time. It needs the repository secrets `APP_URL` (the deployed address) and `CRON_SECRET` (the same value as in the app's environment). If `CRON_SECRET` is not set, the endpoint refuses everything. `.github/workflows/keep-alive.yml` pings `/api/health` and `/api/cron/keepalive` (one tiny database query) every three days so a free Supabase project does not pause.
+- **On a schedule:** `.github/workflows/weekly-drop.yml` calls `POST /api/cron/drop` every Sunday at 20:00 India time. It needs the repository secrets `APP_URL` (the deployed address) and `CRON_SECRET` (the same value as in the app's environment). If `CRON_SECRET` is not set, the endpoint refuses everything. `.github/workflows/keep-alive.yml` pings `/api/health` and `/api/cron/keepalive` (one tiny database query) every three days so a free Supabase project does not pause. `.github/workflows/expire-chats.yml` calls `POST /api/cron/expire` every hour (see Conversations below).
 - **By hand:** `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://your-app/api/cron/drop` (the reply has only totals, no personal data).
 
 The seed script now also removes a drop for the two demo weeks before re-creating its demo drops, so you can run "Run drop now" and later seed again.
 
 ## Shortlist and opening a chat
 
-Members see their weekly intros at `/shortlist` (linked from `/home`): the person's card, "why we matched", how many intros are left, a countdown to the end of the intro and to the next drop, and Pass or Interested with an optional note of up to 140 characters (no links, email addresses, phone numbers or handles; the check is `lib/validators/contact-info.ts`). Photos are signed with the member's own session, so the storage rules still apply. There are friendly empty states for no drop yet, nobody found this week, everything answered, intros that ended, and a paused profile. A "Second look" box is a disabled placeholder that says it comes with Plus. `/chat` is a plain list of open chats with a countdown; messaging itself is not built yet.
+Members see their weekly intros at `/shortlist` (linked from `/home`): the person's card, "why we matched", how many intros are left, a countdown to the end of the intro and to the next drop, and Pass or Interested with an optional note of up to 140 characters (no links, email addresses, phone numbers or handles; the check is `lib/validators/contact-info.ts`). Photos are signed with the member's own session, so the storage rules still apply. There are friendly empty states for no drop yet, nobody found this week, everything answered, intros that ended, and a paused profile. A "Second look" box is a disabled placeholder that says it comes with Plus. `/chat` lists your chats (see the next section).
 
 The rules, all in `config/shortlist.ts`:
 
 - **A chat opens only when both people said Interested** in each other, in the same drop. One side's interest alone never opens anything.
 - **Woman-first:** in a man-woman pair the woman is the opener (she writes first). A man's interest stays quietly pending until she answers, and the screen only says "if it is mutual, a chat opens". It never says whether she passed, and a pass is silent. For other pairs (two women, two men, anyone with a non-binary person) there is no such rule: plain mutual interest opens the chat and whoever said Interested first writes first.
 - **Cap:** at most 3 chats open at once (5 with Plus; "open" and "kept" both count), for both people. If you are at your cap you cannot say Interested (nothing is saved; you can still pass) and the screen explains why. If the other person is at their cap, your interest is saved with the same neutral message as "waiting", and the chat opens the next time either of you opens Shortlist or Chats with a free slot.
-- **Window:** a new chat is open for 72 hours. An intro can be answered until the next drop (Sunday 20:00 India time); after that it counts as expired. There is no expiry job yet; the check happens when someone answers.
+- **Window:** a new chat is open for 72 hours. An intro can be answered until the next drop (Sunday 20:00 India time); after that it counts as expired (the check happens when someone answers).
 
 The answer is saved by one database function, `decide_intro`, in one transaction. It checks that the intro is yours, new and not expired, saves the answer, and opens the chat if the rules above allow. Two people are locked in a fixed order while it runs, so a double click, or both people answering at the same moment, gives exactly one chat (the unique "one live chat per pair" index is a second safety net) and a repeated call just returns the same chat. Only the server can call it (it uses the service role and takes the member id from the verified session); the pure TypeScript twin in `lib/shortlist/decide.ts` is tested against it case by case. Members can read only their own intro rows, so nobody can see the other side's answer.
 
@@ -110,6 +110,29 @@ Events logged (no personal data in them): `intro_viewed`, `intro_interested`, `i
 
 After pulling this, apply the new migration with `npx supabase db push`.
 
+## Conversations and closing a chat
+
+`/chat` lists your chats: the other person's name, the last message, an unread marker, a countdown and a badge ("Your turn", "Waiting", "Time to decide", "Kept", "Closed kindly", "Time ran out"). A chat opens at `/chat/<id>`. The numbers are in `config/conversation.ts`; the rules, in one pure function, are in `lib/conversation/state.ts` (`nextState`), and the database functions in `supabase/migrations/20261118000007_conversations.sql` follow the same rules (a test runs 140 cases through both).
+
+How a chat lives:
+
+1. **Opener first.** A new chat is open for 72 hours. The opener (the woman in a man-woman pair) writes first; the other person cannot write until then. The opener can send up to 3 messages before the first reply, then has to wait.
+2. **Reminder at 48 hours.** Whoever still owes the first message or the first reply sees a gentle in-app banner saying how long is left and that going quiet counts toward their reply rate.
+3. **Day 3 decision.** Once both have written, and from 48 hours after the chat opened, each person chooses **Keep talking** or **Close kindly**. Both keep: the chat becomes a kept chat (no time limit, it keeps using a chat slot). Either closes: the chat ends at once and the other person sees one of four short, blame-free notes the closer picked from a list. Close is final; Keep can still be changed to Close until the other person decides. Nobody sees what the other chose unless the result is "kept" (the database does not let people read each other's choice).
+4. **Time runs out.** If the 72 hours pass with no first message, no reply, or without both people deciding, the chat is "expired". One Keep on its own does not keep a chat.
+5. **Reply rate.** Every time a chat leaves "open" (kept, closed or expired), each person who owed a message gets one more in `reply_rate_den`, and one more in `reply_rate_num` if they sent one. The opener always owes the first message; the other person owes a reply only if the opener wrote. Deciding is not part of it.
+6. **Slots.** Kept chats count toward the cap of 3 (5 with Plus). Closed and expired chats free their slot, and matches that were waiting for it get another try.
+
+Sending is limited to 8 messages a minute and 120 an hour per person across all chats, counted from the messages table itself (a serverless app has no memory to count in). Messages are cleaned (control and invisible characters removed, at most 1000 characters) and can only be written through the `send_message` database function, never inserted directly. The first message a person sends in a chat is checked for a link, email, phone number or handle: the screen asks "Are you sure? Keep early chats in the app", and if they send anyway the message is flagged for moderators (a flag people cannot read). The text of messages is never put in events or logs. The "Safety" button in a chat header is a placeholder until report and block are built.
+
+Live updates use Supabase Realtime (a subscription to new messages in that chat; row level security means only the two people receive them). If the live connection is not up the browser checks for new messages every 4 seconds, and every 20 seconds as a safety net when it is. Your own messages appear at once and are confirmed by the server; a failed send shows "Not sent" with Try again. Unread markers are stored per person (`conversation_reads`) and the other person can never see them.
+
+**Expiry job.** `POST /api/cron/expire` (bearer `CRON_SECRET`, the same check as the drop) ends chats whose time is up, updates reply rates and retries matches that were waiting for a slot. `.github/workflows/expire-chats.yml` calls it every hour. Calling it twice is harmless. It logs one event with counts only.
+
+**Demo controls.** With `DEMO_CONTROLS=true` in the environment, a "Demo controls" panel appears at the bottom of a chat that involves a demo account. It moves the chat's clock forward (to 49 hours in, to 4 hours left, or to "time is up") so the reminder, the decision screen and expiry can be seen without waiting. The server refuses unless the setting is on, the chat involves a demo account (`app_metadata.demo`, set only by the seed script) and the caller is in the chat (or an admin). Leave it off everywhere real people sign up.
+
+After pulling this, apply the new migration with `npx supabase db push`, and make sure the `messages` table has Realtime switched on (the migration adds it to the `supabase_realtime` publication; Database > Replication in the dashboard shows it).
+
 ## Current state
 
-Sign-up, login, logout, password reset, onboarding, photo upload, profile editing, pause and the simulated eLitmus verification exist. The seed script and a first admin area (dashboard and verification approvals) exist. The matching engine and the weekly drop (admin button, scheduled call, stats) exist, and members can answer their shortlist, with the woman-first rule and the chat cap enforced in the database. A chat opens on mutual interest, but there is no messaging yet (the `/chat` page only lists open chats), and payments do not exist yet. My product and engineering decisions are in `docs/decisions.md`, and third-party code is listed in `docs/credits.md`.
+Sign-up, login, logout, password reset, onboarding, photo upload, profile editing, pause and the simulated eLitmus verification exist. The seed script and a first admin area (dashboard and verification approvals) exist. The matching engine and the weekly drop (admin button, scheduled call, stats) exist, and members can answer their shortlist, with the woman-first rule and the chat cap enforced in the database. A chat opens on mutual interest and members can message, decide on day 3, close kindly, and chats expire on a schedule. Report, block, deletion and payments do not exist yet. My product and engineering decisions are in `docs/decisions.md`, and third-party code is listed in `docs/credits.md`.
