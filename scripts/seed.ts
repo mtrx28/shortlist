@@ -245,6 +245,19 @@ async function seed(admin: SupabaseClient) {
     "old drops",
     await admin.from("drops").delete().contains("stats", { demo: true }),
   );
+  // A drop made by "Run drop now" for one of the two demo weeks would clash
+  // with the demo drop (one drop per week), so it is removed too. This script
+  // only ever runs against a demo database.
+  must(
+    "drops of the demo weeks",
+    await admin
+      .from("drops")
+      .delete()
+      .in(
+        "week_start",
+        scenario.drops.map((d) => d.week_start),
+      ),
+  );
   must("old events", await admin.from("events").delete().in("user_id", ids));
   must(
     "old reports",

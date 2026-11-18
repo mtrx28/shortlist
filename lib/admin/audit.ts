@@ -5,6 +5,7 @@
 export const AUDIT_ACTIONS = [
   "verification_approved",
   "verification_rejected",
+  "drop_run",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -20,7 +21,7 @@ export type AuditEntry = {
 export function buildAuditEntry(input: {
   adminId: string;
   action: AuditAction;
-  targetType: "profile";
+  targetType: "profile" | "drop";
   targetId: string;
 }): AuditEntry {
   if (!UUID.test(input.adminId)) throw new Error("Invalid admin id.");
