@@ -430,37 +430,40 @@ describe("messages", () => {
 
   it("hides messages from a non-participant", async () => {
     const result = await actAs(ids.carol, () =>
-      rows(`select * from public.messages`),
+      rows(
+        `select id, conversation_id, sender_id, body, created_at from public.messages`,
+      ),
     );
     expect(result).toHaveLength(0);
     const conversations = await actAs(ids.carol, () =>
-      rows(`select * from public.conversations`),
+      rows(`select id, status from public.conversations`),
     );
     expect(conversations).toHaveLength(0);
   });
 
   it("hides messages in a closed conversation", async () => {
     const result = await actAs(ids.alice, () =>
-      rows(`select * from public.messages where conversation_id = $1`, [
-        closedConversationId,
-      ]),
+      rows(
+        `select id, conversation_id, sender_id, body, created_at from public.messages where conversation_id = $1`,
+        [closedConversationId],
+      ),
     );
     expect(result).toHaveLength(0);
   });
 
-  it("lets a participant send a message as themselves", async () => {
-    await actAs(ids.bob, () =>
-      db.query(
-        `insert into public.messages (conversation_id, sender_id, body) values ($1, $2, 'hi back')`,
-        [conversationId, ids.bob],
+  // Sending goes through send_message() since the conversations migration
+  // (tests/rls/conversations.test.ts). A direct insert, even as yourself into
+  // your own open chat, is refused, so the opener-first rule, the rate limit
+  // and the window cannot be skipped by calling the API directly.
+  it("refuses a direct insert even from a participant", async () => {
+    await expect(
+      actAs(ids.bob, () =>
+        db.query(
+          `insert into public.messages (conversation_id, sender_id, body) values ($1, $2, 'hi back')`,
+          [conversationId, ids.bob],
+        ),
       ),
-    );
-    const result = await actAs(ids.alice, () =>
-      rows(`select body from public.messages where conversation_id = $1`, [
-        conversationId,
-      ]),
-    );
-    expect(result).toHaveLength(2);
+    ).rejects.toThrow(/permission denied/);
   });
 
   it("stops a non-participant from sending", async () => {
@@ -471,7 +474,7 @@ describe("messages", () => {
           [conversationId, ids.carol],
         ),
       ),
-    ).rejects.toThrow(/row-level security/);
+    ).rejects.toThrow(/permission denied/);
   });
 
   it("stops a participant from sending as someone else", async () => {
@@ -482,7 +485,7 @@ describe("messages", () => {
           [conversationId, ids.bob],
         ),
       ),
-    ).rejects.toThrow(/row-level security/);
+    ).rejects.toThrow(/permission denied/);
   });
 
   it("stops sending after the reply window has ended", async () => {
@@ -493,7 +496,7 @@ describe("messages", () => {
           [expiredWindowConversationId, ids.dave],
         ),
       ),
-    ).rejects.toThrow(/row-level security/);
+    ).rejects.toThrow(/permission denied/);
   });
 
   it("stops sending into a closed conversation", async () => {
@@ -504,7 +507,7 @@ describe("messages", () => {
           [closedConversationId, ids.alice],
         ),
       ),
-    ).rejects.toThrow(/row-level security/);
+    ).rejects.toThrow(/permission denied/);
   });
 
   it("does not let users set the flagged column or edit messages", async () => {
@@ -525,7 +528,9 @@ describe("messages", () => {
 
   it("gives admins no blanket access to message text", async () => {
     const result = await actAs(ids.admin, () =>
-      rows(`select * from public.messages`),
+      rows(
+        `select id, conversation_id, sender_id, body, created_at from public.messages`,
+      ),
     );
     expect(result).toHaveLength(0);
   });
