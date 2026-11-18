@@ -1,20 +1,114 @@
-import { POLICY_VERSION } from "@/lib/consent";
+import Link from "next/link";
+import { LegalPage, Section } from "@/components/legal/legal-page";
 
-export const metadata = { title: "Terms | Shortlist" };
+export const metadata = { title: "Terms of use | Shortlist" };
 
 export default function TermsPage() {
   return (
-    <article className="max-w-2xl space-y-4">
-      <p className="rounded-md border border-dashed p-3 text-sm">
-        Template only. These Terms are a placeholder and are not the final text.
-        Version {POLICY_VERSION}.
-      </p>
-      <h1 className="text-2xl font-semibold tracking-tight">Terms of use</h1>
-      <p className="text-muted-foreground text-sm">
-        The real terms will go here: who can use Shortlist (adults only, 18+),
-        how accounts and conversations work, what behaviour is not allowed, and
-        how reports are handled.
-      </p>
-    </article>
+    <LegalPage
+      title="Terms of use"
+      intro="These are the rules for using Shortlist. I wrote them in plain words on purpose."
+    >
+      <Section title="1. Who can use Shortlist">
+        <p>
+          You must be at least 18. You give your real date of birth when you
+          sign up and we check it. You may have one account, and the details in
+          it must be about you and true.
+        </p>
+      </Section>
+
+      <Section title="2. What Shortlist does">
+        <p>
+          Once a week we show you a few people we think you might get along
+          with. If you both say Interested, a chat opens for 72 hours. After two
+          days, if you have both written, each of you chooses to keep talking or
+          to close the chat kindly. You can have a limited number of chats open
+          at once. Nothing here promises that you will meet anyone.
+        </p>
+      </Section>
+
+      <Section title="3. How we expect you to behave">
+        <p>
+          Be honest and respectful. The{" "}
+          <Link href="/community-rules" className="underline">
+            community rules
+          </Link>{" "}
+          are part of these terms. In short: no harassment, no pressure, no fake
+          profiles, no asking for money, no photos of other people, and no
+          sharing anyone&apos;s private details.
+        </p>
+      </Section>
+
+      <Section title="4. Reports, blocks and suspension">
+        <p>
+          You can report or block anyone you were introduced to. We read
+          reports, and we may warn, suspend or remove accounts that break these
+          terms. If we suspend you, you can still download your data, delete
+          your account and write to us on the{" "}
+          <Link href="/grievance" className="underline">
+            grievance page
+          </Link>
+          .
+        </p>
+      </Section>
+
+      <Section title="5. Your content">
+        <p>
+          You own what you write and upload. You allow us to show it to the
+          people we introduce you to, and to keep it for as long as your account
+          exists, so the service can work. Do not upload anything you do not
+          have the right to share.
+        </p>
+      </Section>
+
+      <Section title="6. Verification">
+        <p>
+          The eLitmus badge in this demonstration is simulated. A badge does not
+          mean we vouch for a person. Meet people carefully; read the{" "}
+          <Link href="/safety" className="underline">
+            safety tips
+          </Link>
+          .
+        </p>
+      </Section>
+
+      <Section title="7. Ending your account">
+        <p>
+          You can delete your account at any time from your account pages. We
+          describe what is removed and what is kept in the{" "}
+          <Link href="/privacy" className="underline">
+            privacy notice
+          </Link>
+          .
+        </p>
+      </Section>
+
+      <Section title="8. Limits of what we promise">
+        <p>
+          This is a demonstration product. It is provided as it is, without
+          promises about availability. We are not responsible for what other
+          members say or do, but we will act on reports. Nothing here limits
+          rights you have under the law that cannot be limited.
+        </p>
+      </Section>
+
+      <Section title="9. Changes">
+        <p>
+          If we change these terms in a way that matters we will change the
+          version number and ask you to accept the new text again, on your
+          privacy page.
+        </p>
+      </Section>
+
+      <Section title="10. Contact">
+        <p>
+          Questions or complaints: the{" "}
+          <Link href="/grievance" className="underline">
+            grievance page
+          </Link>
+          .
+        </p>
+      </Section>
+    </LegalPage>
   );
 }

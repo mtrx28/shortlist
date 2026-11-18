@@ -42,8 +42,28 @@ export default function RootLayout({
         <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12">
           {children}
         </main>
-        <footer className="text-muted-foreground border-t py-6 text-center text-xs">
-          Demo environment. Test data only.
+        <footer className="text-muted-foreground space-y-2 border-t py-6 text-center text-xs">
+          <nav
+            aria-label="Policies"
+            className="flex flex-wrap justify-center gap-x-4 gap-y-1"
+          >
+            <Link href="/terms" className="underline">
+              Terms
+            </Link>
+            <Link href="/privacy" className="underline">
+              Privacy
+            </Link>
+            <Link href="/community-rules" className="underline">
+              Community rules
+            </Link>
+            <Link href="/safety" className="underline">
+              Safety tips
+            </Link>
+            <Link href="/grievance" className="underline">
+              Grievance and contact
+            </Link>
+          </nav>
+          <p>Demo environment. Test data only.</p>
         </footer>
       </body>
     </html>

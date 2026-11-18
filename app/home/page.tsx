@@ -52,9 +52,18 @@ export default async function HomePage() {
           </Link>
         </p>
       )}
-      <p className="text-sm">
+      <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
         <Link href="/account/profile" className="underline">
           Edit your profile
+        </Link>
+        <Link href="/account/privacy" className="underline">
+          Privacy and consents
+        </Link>
+        <Link href="/account/export" className="underline">
+          Download my data
+        </Link>
+        <Link href="/account/delete" className="underline">
+          Delete my account
         </Link>
       </p>
       <form action={logoutAction}>
