@@ -14,6 +14,8 @@ export const AUDIT_ACTIONS = [
   "user_suspended",
   "user_unsuspended",
   "contact_handled",
+  // Written by the payments database functions.
+  "plus_revoked",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { formatRupees } from "@/config/plans";
+import { summarizeOrders, type OrderRow } from "@/lib/admin/orders-stats";
 import { requireAdmin } from "@/lib/admin/require-admin";
 import { countByName } from "@/lib/admin/stats";
 import { slaState } from "@/lib/safety/sla";
@@ -48,6 +50,30 @@ export default async function AdminDashboardPage() {
     .select("id", { count: "exact", head: true })
     .eq("status", "open");
 
+  // Plus and payments. Active members = finished onboarding, not paused, not
+  // suspended. Conversion = members who paid at least once / active members.
+  const { count: activeUsers } = await supabase
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .not("onboarding_completed_at", "is", null)
+    .eq("paused", false)
+    .is("suspended_at", null)
+    .is("deleted_at", null);
+  const { data: orderRows } = await supabase
+    .from("orders")
+    .select(
+      "id, user_id, razorpay_order_id, razorpay_payment_id, plan, amount_paise, status, provider, created_at, paid_at, revoked_at",
+    )
+    .limit(5000);
+  const orders = summarizeOrders(
+    (orderRows ?? []) as OrderRow[],
+    activeUsers ?? 0,
+  );
+  const { count: plusNow } = await supabase
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .gt("plus_until", new Date().toISOString());
+
   // The latest events, grouped by name. A stub: fine for a small database; a
   // real version would count in SQL.
   const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
@@ -80,6 +106,40 @@ export default async function AdminDashboardPage() {
             <div key={label} className="rounded-lg border p-3">
               <dt className="text-muted-foreground text-xs">{label}</dt>
               <dd className="text-2xl font-semibold">{value ?? "-"}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-base font-medium">
+          <Link
+            href="/admin/orders"
+            className="underline-offset-4 hover:underline"
+          >
+            Plus and orders
+          </Link>
+        </h2>
+        <dl
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+          data-testid="orders-stats"
+        >
+          {[
+            ["Orders", String(orders.total)],
+            ["Paid", String(orders.paid)],
+            ["Not completed", String(orders.abandoned + orders.failed)],
+            ["Paid total (test money)", formatRupees(orders.revenuePaise)],
+            ["Plus members now", String(plusNow ?? "-")],
+            [
+              "Conversion (paid / active)",
+              orders.conversionPercent === null
+                ? "-"
+                : `${orders.conversionPercent}%`,
+            ],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-lg border p-3">
+              <dt className="text-muted-foreground text-xs">{label}</dt>
+              <dd className="text-2xl font-semibold">{value}</dd>
             </div>
           ))}
         </dl>

@@ -45,6 +45,12 @@ export default async function AdminLayout({
         >
           Contact
         </Link>
+        <Link
+          href="/admin/orders"
+          className="underline-offset-4 hover:underline"
+        >
+          Orders
+        </Link>
         <Link href="/admin/drop" className="underline-offset-4 hover:underline">
           Weekly drop
         </Link>
