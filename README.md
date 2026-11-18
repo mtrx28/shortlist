@@ -29,7 +29,7 @@ Open http://localhost:3000. The health check is at http://localhost:3000/api/hea
 
 ## Database and sign-in
 
-The schema is in `supabase/migrations/`: one file for the tables, constraints and the signup trigger, one for row level security (RLS), the rules that say which rows each user may read or write, and one for onboarding (the completed flag, limits on profile data, the photo bucket and its policies). There is no public browse of profiles: you can only read your own, or someone you were shown in an intro or are chatting with. Users cannot change their own `role`, Plus status or verification status, because those columns are not writable for them.
+The schema is in `supabase/migrations/`: one file for the tables, constraints and the signup trigger, one for row level security (RLS), the rules that say which rows each user may read or write, one for onboarding (the completed flag, limits on profile data, the photo bucket and its policies), one for approving verifications in a single transaction, and one that saves a weekly drop (`write_drop`). There is no public browse of profiles: you can only read your own, or someone you were shown in an intro or are chatting with. Users cannot change their own `role`, Plus status or verification status, because those columns are not writable for them.
 
 Sign-in uses Supabase Auth (email and password, with a confirmation email). The 18+ check happens in the sign-up server action and again in a database trigger, so calling the API directly does not skip it. Sign-up also needs ticking the Terms and Privacy boxes; the version agreed to is stored with a timestamp. The `/terms` and `/privacy` pages are placeholders for now.
 
@@ -67,10 +67,32 @@ Demo logins (the password is the value of `DEMO_PASSWORD`):
 
 The other demo members (for example `meera@`, `rohan@`, `lakshmi@` on the same domain) use the same password. To see onboarding, sign up with a new address.
 
-The admin area is at `/admin`; a link appears on `/home` for admins. Admin is a role stored on the profile, and users cannot set it themselves. Access is checked on the server for every page and every action, not only in the middleware, and anyone who is not an admin gets a plain 404. The dashboard shows profile counts by eLitmus status and counts of logged events. The verification page lists pending requests with Approve and Reject. These use the service role, only change rows that are still pending, and write a row to `audit_log` (who, what, which profile) and an event. Reject sets the status back to not requested and clears the stored pH ID hash so the person can try again. Admins see an age, never a birth date, and only whether a pH ID hash exists, never the hash.
+The admin area is at `/admin`; a link appears on `/home` for admins. Admin is a role stored on the profile, and users cannot set it themselves. Access is checked on the server for every page and every action, not only in the middleware, and anyone who is not an admin gets a plain 404. The dashboard shows profile counts by eLitmus status and counts of logged events. The verification page lists pending requests with Approve and Reject. These use the service role, only change rows that are still pending, and write a row to `audit_log` (who, what, which profile) and an event. The status change and the audit row are written together by one database function (`admin_review_verification`, callable only by the server), so one can never happen without the other. Reject sets the status back to not requested and clears the stored pH ID hash so the person can try again. Admins see an age, never a birth date, and only whether a pH ID hash exists, never the hash.
 
 To make a real account an admin, run this in the Supabase SQL editor: `update public.profiles set role = 'admin' where id = '<user id>';`
 
+## Matching and the weekly drop
+
+Once a week every member gets a short list of introductions: 3 for free members, 5 for Plus. Everything the engine uses (the numbers and the score weights) is in `config/matching.ts`; the engine itself is plain TypeScript in `lib/matching/` and does not touch the database.
+
+How a drop is built, in plain words:
+
+1. **Who takes part.** Paused, deleted, suspended and half-finished profiles are left out.
+2. **Hard rules.** A candidate must be in the same city, both people must be interested in each other's gender, ages must be within 6 years (there is no age-range setting yet), the intents must be compatible, nobody has blocked anybody, and you have not been shown that person in the last 8 drops or already chat with them. These are never traded off against the score.
+3. **Score** (0 to 1): 35% how many of the eight values questions you answered the same way (a question counts double if either person marked it as a deal-breaker), 20% shared interests, 15% pH batches close together, 10% intent, 10% how often the person replies (a band, and neutral until they have 5 chats), 10% a bonus for people who were rarely shown lately. Pairs under 0.30 are never shown, so a small pool gives fewer intros instead of weak ones.
+4. **Assignment.** People take turns in a random order (the same seed gives the same order), each taking their best candidate who is not yet in 5 shortlists, until everyone has their quota or runs out of options. This is greedy, not optimal: the best possible assignment is a flow problem. I chose it because it is easy to explain and the loss is small when the cap (5) is bigger than the number of intros (3).
+5. **Reasons.** Each intro gets two plain sentences from the strongest signals, for example "You answered alike on how close you stay to family". They name a topic, never an answer, and never use the birth date or exact age.
+
+The drop is saved by a database function (`write_drop`, only the server can call it) in one transaction, so running a week twice never creates duplicates. A drop made by the seed script is marked as demo and is replaced; a real drop is left alone, and "rebuild" only works while nobody has answered an intro in it.
+
+To run it:
+
+- **From the admin area:** `/admin/drop`, button "Run drop now". It shows how many people were considered, how many intros were created, the share of people with at least one intro, how many shortlists the most and least shown person appear in, and why some people got none (counts only).
+- **On a schedule:** `.github/workflows/weekly-drop.yml` calls `POST /api/cron/drop` every Sunday at 20:00 India time. It needs the repository secrets `APP_URL` (the deployed address) and `CRON_SECRET` (the same value as in the app's environment). If `CRON_SECRET` is not set, the endpoint refuses everything. `.github/workflows/keep-alive.yml` pings `/api/health` and `/api/cron/keepalive` (one tiny database query) every three days so a free Supabase project does not pause.
+- **By hand:** `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://your-app/api/cron/drop` (the reply has only totals, no personal data).
+
+The seed script now also removes a drop for the two demo weeks before re-creating its demo drops, so you can run "Run drop now" and later seed again.
+
 ## Current state
 
-Sign-up, login, logout, password reset, onboarding, photo upload, profile editing, pause and the simulated eLitmus verification exist. The seed script and a first admin area (dashboard and verification approvals) exist. Matching, chat and payments do not yet. My product and engineering decisions are in `docs/decisions.md`, and third-party code is listed in `docs/credits.md`.
+Sign-up, login, logout, password reset, onboarding, photo upload, profile editing, pause and the simulated eLitmus verification exist. The seed script and a first admin area (dashboard and verification approvals) exist. The matching engine and the weekly drop (admin button, scheduled call, stats) exist, but there is no screen yet where members see their shortlist. Chat and payments do not exist yet. My product and engineering decisions are in `docs/decisions.md`, and third-party code is listed in `docs/credits.md`.

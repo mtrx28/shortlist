@@ -47,6 +47,6 @@ Geist and Geist Mono, loaded through `next/font/google` (SIL Open Font Licence 1
 
 ## Services
 
-GitHub Actions (CI). Supabase, Vercel and Razorpay will be added here when they are actually wired in.
+GitHub Actions (CI, the weekly drop schedule and the keep-alive ping; the workflows use only `actions/checkout`, `actions/setup-node` and `curl`). The matching engine, its seeded random number generator (a standard mulberry32 with an FNV-1a hash, a few lines written out in `lib/matching/random.ts`) and the scoring are my own code with no extra libraries. Supabase, Vercel and Razorpay will be added here when they are actually wired in.
 
 Licences were taken from each package's published metadata; I have not audited transitive dependencies one by one.
