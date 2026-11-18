@@ -13,8 +13,10 @@ export const PROTECTED_PREFIXES = [
   "/plus",
 ];
 
-// Pages only for signed-out people; signed-in users are sent to /home.
-export const GUEST_ONLY_PATHS = ["/login", "/signup", "/forgot-password"];
+// Pages only for signed-out people; signed-in users are sent to /home. The
+// landing page "/" is one of them: it is written for visitors, members have
+// /home.
+export const GUEST_ONLY_PATHS = ["/", "/login", "/signup", "/forgot-password"];
 
 export function isProtectedPath(pathname: string) {
   return PROTECTED_PREFIXES.some(
