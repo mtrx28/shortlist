@@ -29,10 +29,11 @@ export default defineConfig({
       testIgnore: /mobile\.spec\.ts/,
     },
     {
-      // A phone-sized screen (Pixel 5, still Chromium) for the main flows.
+      // A phone-sized screen (Pixel 5, still Chromium) for the main flows and
+      // the accessibility checks, so both layouts are checked by axe.
       name: "mobile",
       use: { ...devices["Pixel 5"] },
-      testMatch: /mobile\.spec\.ts/,
+      testMatch: /(mobile|05-accessibility)\.spec\.ts/,
     },
   ],
   webServer: {

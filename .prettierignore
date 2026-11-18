@@ -6,3 +6,5 @@ public
 supabase/.temp
 docs/decisions.md
 .next-test
+playwright-report
+test-results

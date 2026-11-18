@@ -304,7 +304,9 @@ test("an admin sees the orders, with masked ids and the stats, and can revoke Pl
   });
   await row.getByRole("button", { name: "Revoke Plus" }).click();
   await expect(page.getByRole("status")).toContainText("Plus was taken away");
-  expect((await plusUntil(buyer))!).toBeLessThanOrEqual(Date.now());
+  // The database clock (in Docker) can run a little ahead of this machine,
+  // so allow a few seconds; the point is that Plus has ended, not when.
+  expect((await plusUntil(buyer))!).toBeLessThanOrEqual(Date.now() + 5000);
   const { data: audit } = await service
     .from("audit_log")
     .select("action, target")

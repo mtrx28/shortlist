@@ -74,10 +74,10 @@ test("a stranger who knows the chat address gets a plain 404", async ({
   await login(page, stranger, "/home");
   // Someone else's chat and a chat that does not exist look exactly the same.
   const real = await page.goto(`/chat/${chatId}`);
-  await expect(page.getByText("This page could not be found")).toBeVisible();
+  await expect(page.getByText("We could not find that page")).toBeVisible();
   const realStatus = real?.status();
   const missing = await page.goto("/chat/6f1d3a0e-3a58-4c70-9a8e-1b2c3d4e5f60");
-  await expect(page.getByText("This page could not be found")).toBeVisible();
+  await expect(page.getByText("We could not find that page")).toBeVisible();
   expect(missing?.status()).toBe(realStatus);
   await expect(page.getByText("Hello, nice to meet you")).toHaveCount(0);
   await page.context().close();
@@ -300,7 +300,7 @@ test("a normal user cannot open the admin pages", async ({ browser }) => {
   ]) {
     await page.goto(path);
     await expect(
-      page.getByText("This page could not be found"),
+      page.getByText("We could not find that page"),
       path,
     ).toBeVisible();
   }

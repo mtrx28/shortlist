@@ -26,6 +26,8 @@ test("public pages have no serious accessibility problems", async ({
 }) => {
   for (const path of [
     "/",
+    "/demo",
+    "/does-not-exist",
     "/login",
     "/signup",
     "/forgot-password",
