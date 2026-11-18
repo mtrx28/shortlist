@@ -14,6 +14,7 @@ node_modules/
 
 # builds and caches
 .next/
+.next-test/
 out/
 dist/
 build/
@@ -26,6 +27,7 @@ next-env.d.ts
 # tests
 playwright-report/
 test-results/
+blob-report/
 
 # supabase local
 supabase/.branches/

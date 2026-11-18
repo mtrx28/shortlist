@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEMO_EMAIL_DOMAIN,
   assertSeedAllowed,
+  assertSeedTarget,
   demoEmail,
   isDemoEmail,
   isDemoUser,
@@ -69,6 +70,30 @@ describe("demo password", () => {
     expect(() => readDemoPassword({ DEMO_PASSWORD: "short" })).toThrow(/8/);
     expect(readDemoPassword({ DEMO_PASSWORD: "long-enough-1" })).toBe(
       "long-enough-1",
+    );
+  });
+});
+
+describe("assertSeedTarget", () => {
+  it("allows the local stack with or without --local", () => {
+    expect(assertSeedTarget("http://127.0.0.1:54321", ["--local"])).toBe(
+      "local",
+    );
+    expect(assertSeedTarget("http://localhost:54321", [])).toBe("local");
+  });
+  it("calls any other address remote, and --local refuses it", () => {
+    expect(assertSeedTarget("https://abc.supabase.co", [])).toBe("remote");
+    expect(() =>
+      assertSeedTarget("https://abc.supabase.co", ["--local"]),
+    ).toThrow(/not on this machine/);
+    expect(() => assertSeedTarget(undefined, ["--local"])).toThrow();
+  });
+  it("does not fall for look-alike hosts", () => {
+    expect(assertSeedTarget("http://127.0.0.1.evil.example", [])).toBe(
+      "remote",
+    );
+    expect(assertSeedTarget("http://localhost.evil.example:54321", [])).toBe(
+      "remote",
     );
   });
 });

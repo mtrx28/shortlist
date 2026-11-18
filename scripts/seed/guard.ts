@@ -1,3 +1,5 @@
+import { isLocalUrl } from "@/lib/local-url";
+
 // Safety checks for the seed script. They are plain functions so they can be
 // unit tested without touching a database.
 
@@ -52,4 +54,22 @@ export function readDemoPassword(
     throw new Error("DEMO_PASSWORD must be at least 8 characters long.");
   }
   return password;
+}
+
+// Where is the seed about to write? The local stack (127.0.0.1 or localhost)
+// is always fine. Any other address is a hosted project and goes through the
+// existing safeguards above (production flag, --force-demo). The --local flag
+// (used by `npm run seed:local`) makes the script REFUSE anything that is not
+// local, so a wrong env file can never point it at the real project.
+export function assertSeedTarget(
+  supabaseUrl: string | undefined,
+  argv: string[],
+): "local" | "remote" {
+  const local = isLocalUrl(supabaseUrl);
+  if (argv.includes("--local") && !local) {
+    throw new Error(
+      "Refusing to run: --local was given but the Supabase address is not on this machine.",
+    );
+  }
+  return local ? "local" : "remote";
 }

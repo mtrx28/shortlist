@@ -14,6 +14,7 @@ import {
 import {
   DEMO_EMAIL_DOMAIN,
   assertSeedAllowed,
+  assertSeedTarget,
   isDemoUser,
   readDemoPassword,
 } from "./seed/guard";
@@ -287,6 +288,10 @@ async function seed(admin: SupabaseClient) {
 async function main() {
   const argv = process.argv.slice(2);
   assertSeedAllowed(process.env, argv);
+  const target = assertSeedTarget(process.env.NEXT_PUBLIC_SUPABASE_URL, argv);
+  console.log(
+    `Seed target: ${target === "local" ? "local stack" : "HOSTED project"}.`,
+  );
 
   const admin = createAdminClient();
   if (!admin) {
