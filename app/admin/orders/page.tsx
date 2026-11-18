@@ -57,7 +57,12 @@ export default async function AdminOrdersPage({
       {rows.length === 0 ? (
         <p className="text-muted-foreground text-sm">No orders yet.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div
+          className="overflow-x-auto rounded-lg border"
+          tabIndex={0}
+          role="region"
+          aria-label="Orders table, scrolls sideways on small screens"
+        >
           <table className="w-full text-left text-sm">
             <caption className="sr-only">Orders, newest first</caption>
             <thead className="bg-muted/60">

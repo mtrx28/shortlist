@@ -101,7 +101,12 @@ export default async function PlusPage() {
         <h2 className="mb-2 text-base font-medium">
           Free and Plus, side by side
         </h2>
-        <div className="overflow-x-auto rounded-lg border">
+        <div
+          className="overflow-x-auto rounded-lg border"
+          tabIndex={0}
+          role="region"
+          aria-label="Free and Plus compared, scrolls sideways on small screens"
+        >
           <table className="w-full text-left text-sm">
             <caption className="sr-only">
               What you get with the free plan and with Plus

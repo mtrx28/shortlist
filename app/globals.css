@@ -128,3 +128,38 @@
     @apply font-sans;
   }
 }
+
+/* Keyboard users: a visible focus ring everywhere, and a skip link that only
+   appears when it is focused. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
+
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: -4rem;
+  z-index: 50;
+  border-radius: 0.5rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  transition: top 0.1s;
+}
+.skip-link:focus {
+  top: 0.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
