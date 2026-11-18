@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { BadgeCheck, ShieldAlert } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 import { ChatThread } from "@/components/chat/chat-thread";
 import { ProfileCard } from "@/components/profile/profile-card";
+import { SafetyMenu } from "@/components/safety/safety-menu";
 import { demoControlsEnabled, demoGuard } from "@/lib/conversation/demo";
 import type { ChatMessage } from "@/lib/conversation/thread-state";
 import type { ConversationSnapshot } from "@/lib/conversation/view";
@@ -125,22 +126,16 @@ export default async function ChatPage({
   return (
     <section className="mx-auto max-w-md space-y-4">
       <header className="space-y-3">
-        <div className="flex items-baseline justify-between gap-2">
+        <div className="flex items-start justify-between gap-2">
           <Link href="/chat" className="text-sm underline">
             All chats
           </Link>
-          {/* M7 will turn this into the real safety menu (report and block).
-              Until then it is a clearly marked placeholder that does nothing. */}
-          <button
-            type="button"
-            disabled
-            aria-disabled="true"
-            title="Report and block arrive in the next update"
-            className="text-muted-foreground inline-flex items-center gap-1 text-sm"
-          >
-            <ShieldAlert className="size-4" aria-hidden />
-            Safety (coming soon)
-          </button>
+          <SafetyMenu
+            targetId={snapshot.other_id}
+            targetName={otherName}
+            conversationId={id}
+            chatStatus={snapshot.status}
+          />
         </div>
         <div className="space-y-1">
           <h1 className="text-xl font-semibold tracking-tight">

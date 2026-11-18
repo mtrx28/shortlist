@@ -143,6 +143,7 @@ export default async function ShortlistPage() {
             <IntroCard
               key={intro.id}
               introId={intro.id}
+              candidateId={person.id}
               status={intro.status}
               reasons={intro.reasons}
               myNote={intro.note}

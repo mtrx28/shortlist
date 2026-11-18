@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/admin/require-admin";
 import { countByName } from "@/lib/admin/stats";
+import { slaState } from "@/lib/safety/sla";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +29,24 @@ export default async function AdminDashboardPage() {
       count((q) => q.eq("paused", true)),
       count((q) => q.not("suspended_at", "is", null)),
     ]);
+
+  // Safety queue: open and acknowledged reports, and how many are past our
+  // own draft targets (see config/safety.ts).
+  const { data: openReports } = await supabase
+    .from("reports")
+    .select("status, created_at, ack_at, resolved_at")
+    .in("status", ["open", "ack"])
+    .limit(1000);
+  const now = new Date();
+  const waiting = openReports ?? [];
+  const overdue = waiting.filter((r) => {
+    const s = slaState(r as Parameters<typeof slaState>[0], now);
+    return s === "ack_overdue" || s === "resolve_overdue";
+  }).length;
+  const { count: contactOpen } = await supabase
+    .from("contact_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "open");
 
   // The latest events, grouped by name. A stub: fine for a small database; a
   // real version would count in SQL.
@@ -62,6 +82,53 @@ export default async function AdminDashboardPage() {
               <dd className="text-2xl font-semibold">{value ?? "-"}</dd>
             </div>
           ))}
+        </dl>
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-base font-medium">Safety</h2>
+        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border p-3">
+            <dt className="text-muted-foreground text-xs">Open reports</dt>
+            <dd className="text-2xl font-semibold">
+              <Link
+                href="/admin/reports"
+                className="underline-offset-4 hover:underline"
+              >
+                {waiting.length}
+              </Link>
+            </dd>
+          </div>
+          <div className="rounded-lg border p-3">
+            <dt className="text-muted-foreground text-xs">
+              Past draft targets
+            </dt>
+            <dd
+              className={
+                overdue > 0
+                  ? "text-destructive text-2xl font-semibold"
+                  : "text-2xl font-semibold"
+              }
+            >
+              <Link
+                href="/admin/reports"
+                className="underline-offset-4 hover:underline"
+              >
+                {overdue}
+              </Link>
+            </dd>
+          </div>
+          <div className="rounded-lg border p-3">
+            <dt className="text-muted-foreground text-xs">Contact messages</dt>
+            <dd className="text-2xl font-semibold">
+              <Link
+                href="/admin/contact"
+                className="underline-offset-4 hover:underline"
+              >
+                {contactOpen ?? "-"}
+              </Link>
+            </dd>
+          </div>
         </dl>
       </div>
 

@@ -11,7 +11,7 @@ import { PHOTO_BUCKET } from "@/lib/photos";
 // The columns a signed-in user may read from their own profile row.
 // (dob and elitmus_ref_hash are never readable, even by their owner.)
 export const MY_PROFILE_COLUMNS =
-  "id, role, display_name, gender, interested_in, city, intent, batch_year, college_tier, occupation, bio_prompts, values_answers, interests, photos, verified_email, elitmus_status, paused, onboarding_completed_at";
+  "id, role, display_name, gender, interested_in, city, intent, batch_year, college_tier, occupation, bio_prompts, values_answers, interests, photos, verified_email, elitmus_status, paused, suspended_at, onboarding_completed_at";
 
 export type MyProfile = OnboardingProfile & {
   id: string;
@@ -21,6 +21,7 @@ export type MyProfile = OnboardingProfile & {
   verified_email: boolean;
   elitmus_status: "none" | "pending" | "verified";
   paused: boolean;
+  suspended_at: string | null;
 };
 
 export async function fetchMyProfile(
@@ -51,6 +52,9 @@ export async function requireUserProfile(): Promise<{
   // The signup trigger always creates a profile; if it is missing, do not
   // bounce between /login and /home.
   if (!profile) redirect("/");
+  // A suspended member cannot use the app; they can still reach their data
+  // tools (export, delete) and contact us from the suspended page.
+  if (profile.suspended_at) redirect("/account/suspended");
   return {
     supabase,
     userId: data.user.id,
@@ -75,4 +79,22 @@ export async function signedPhotos(
   return (data ?? []).flatMap((d) =>
     d.signedUrl && d.path ? [{ path: d.path, url: d.signedUrl }] : [],
   );
+}
+
+// For pages that only need to know who is signed in (the data tools a
+// suspended person must still reach). Signed-out visitors go to login.
+export async function requireSession(): Promise<{
+  supabase: SupabaseClient;
+  userId: string;
+  email: string;
+}> {
+  const supabase = await createClient();
+  if (!supabase) redirect("/login");
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) redirect("/login");
+  return {
+    supabase,
+    userId: data.user.id,
+    email: data.user.email ?? "",
+  };
 }

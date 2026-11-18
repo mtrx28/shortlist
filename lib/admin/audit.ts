@@ -6,6 +6,14 @@ export const AUDIT_ACTIONS = [
   "verification_approved",
   "verification_rejected",
   "drop_run",
+  // Written by the safety database functions (see the safety migration).
+  "report_acknowledged",
+  "report_actioned",
+  "report_dismissed",
+  "report_evidence_viewed",
+  "user_suspended",
+  "user_unsuspended",
+  "contact_handled",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -21,7 +29,7 @@ export type AuditEntry = {
 export function buildAuditEntry(input: {
   adminId: string;
   action: AuditAction;
-  targetType: "profile" | "drop";
+  targetType: "profile" | "drop" | "report" | "contact";
   targetId: string;
 }): AuditEntry {
   if (!UUID.test(input.adminId)) throw new Error("Invalid admin id.");

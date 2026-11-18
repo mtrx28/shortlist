@@ -6,12 +6,14 @@ import {
   type ProfileCardData,
 } from "@/components/profile/profile-card";
 import { Countdown } from "@/components/shortlist/countdown";
+import { SafetyMenu } from "@/components/safety/safety-menu";
 
 // One intro: the person's card, why we matched you, and what you can do.
 // What it says about a decided intro is deliberately neutral: it shows only
 // YOUR own answer, never anything about the other person's.
 export function IntroCard({
   introId,
+  candidateId,
   status,
   profile,
   reasons,
@@ -23,6 +25,7 @@ export function IntroCard({
   renderedAt,
 }: {
   introId: string;
+  candidateId: string;
   status: "new" | "passed" | "interested" | "expired";
   profile: ProfileCardData;
   reasons: string[];
@@ -95,6 +98,9 @@ export function IntroCard({
           atCap={atCap}
           capText={capText}
         />
+      </div>
+      <div className="flex justify-end">
+        <SafetyMenu targetId={candidateId} targetName={profile.displayName} />
       </div>
     </li>
   );

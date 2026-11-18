@@ -33,6 +33,18 @@ export default async function AdminLayout({
         >
           Verifications
         </Link>
+        <Link
+          href="/admin/reports"
+          className="underline-offset-4 hover:underline"
+        >
+          Reports
+        </Link>
+        <Link
+          href="/admin/contact"
+          className="underline-offset-4 hover:underline"
+        >
+          Contact
+        </Link>
         <Link href="/admin/drop" className="underline-offset-4 hover:underline">
           Weekly drop
         </Link>
