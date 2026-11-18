@@ -58,6 +58,7 @@ test("signed-in pages have no serious accessibility problems", async ({
   await expectNoSeriousA11yIssues(page, "/home");
   for (const path of [
     "/shortlist",
+    "/plus",
     "/chat",
     `/chat/${chat}`,
     "/account/profile",
@@ -85,6 +86,7 @@ test("signed-in pages have no serious accessibility problems", async ({
     "/admin/contact",
     "/admin/verifications",
     "/admin/drop",
+    "/admin/orders",
   ]) {
     await page.goto(path);
     await expectNoSeriousA11yIssues(page, path);

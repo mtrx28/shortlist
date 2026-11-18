@@ -70,8 +70,17 @@ test("shortlist, safety menu, chat and menus work on a phone", async ({
   await noSidewaysScroll(page, "/chat");
   await expectNoSeriousA11yIssues(page, "mobile /chat");
 
+  // The Plus page (price table, plan buttons, fine print) fits too.
+  await page.goto("/plus");
+  await expect(page.getByTestId("mode-ribbon")).toBeVisible();
+  await noSidewaysScroll(page, "/plus");
+  await expectNoSeriousA11yIssues(page, "mobile /plus");
+  await page.getByRole("button", { name: /Get Plus for 1 month/ }).click();
+  await page.waitForURL(/\/plus\/checkout\//);
+  await noSidewaysScroll(page, "/plus/checkout");
+
   // The policy pages and footer fit too.
-  for (const path of ["/privacy", "/grievance", "/account/delete"]) {
+  for (const path of ["/privacy", "/grievance", "/account/delete", "/terms"]) {
     await page.goto(path);
     await noSidewaysScroll(page, path);
   }

@@ -62,12 +62,13 @@ The RLS tests run the migrations in an in-process Postgres (PGlite) and act as d
 
 Demo logins (the password is the value of `DEMO_PASSWORD`):
 
-| Email                       | Who                   | What it shows                                                                                                                                                         |
-| --------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `priya@demo.shortlist.test` | Woman, Bengaluru      | A full shortlist of three, and a chat in progress                                                                                                                     |
-| `arjun@demo.shortlist.test` | Man, Pune             | A chat with about 4 hours left where Sneha wrote and he has not replied (reminder banner; replying opens the day-3 decision), and a woman who already showed interest |
-| `neha@demo.shortlist.test`  | New member, Hyderabad | A finished profile with nothing yet (the empty state)                                                                                                                 |
-| `admin@demo.shortlist.test` | Admin                 | The admin dashboard and verification approvals                                                                                                                        |
+| Email                        | Who                         | What it shows                                                                                                                                                         |
+| ---------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `priya@demo.shortlist.test`  | Woman, Bengaluru            | A full shortlist of three, and a chat in progress                                                                                                                     |
+| `arjun@demo.shortlist.test`  | Man, Pune                   | A chat with about 4 hours left where Sneha wrote and he has not replied (reminder banner; replying opens the day-3 decision), and a woman who already showed interest |
+| `neha@demo.shortlist.test`   | New member, Hyderabad       | A finished profile with nothing yet (the empty state)                                                                                                                 |
+| `ananya@demo.shortlist.test` | Woman, Bengaluru, with Plus | The Plus perks: 5 chats at once, 5 intros a drop, the full "why we matched" breakdown and a second look (re-seeding gives her a year of Plus; nobody else has it)     |
+| `admin@demo.shortlist.test`  | Admin                       | The admin dashboard and verification approvals                                                                                                                        |
 
 The other demo members (for example `meera@`, `rohan@`, `lakshmi@` on the same domain) use the same password. To see onboarding, sign up with a new address.
 
@@ -149,6 +150,33 @@ After pulling this, apply the new migration with `npx supabase db push`, and mak
 
 **Security headers** (`next.config.ts`): a Content Security Policy limited to this site, the Supabase host (including its realtime WebSocket) and Razorpay checkout, HSTS on https, no framing, `nosniff`, a strict referrer policy and a permissions policy. `script-src` still allows inline scripts because Next.js needs them without a per-request nonce; that trade-off is explained in the file.
 
+## Plus and payments
+
+Shortlist Plus (`/plus`) costs Rs 199 for 30 days or Rs 499 for 90 days, as a **one-time purchase**: it does not renew, no card or mandate is stored. Plus gives 5 chats open at once (3 free), 5 intros in the weekly drop (3 free), the full "why we matched" breakdown, and a **second look**: once every 30 days bring back one intro from the last four weeks that you passed on or let expire, for 72 hours (they are not told; a chat opens only if they had said Interested in that drop). Buying again while Plus is running adds the time after the current end date. When Plus ends nothing is deleted: open chats stay open, you just cannot open new ones past 3. What is **never** behind Plus (listed in `config/plans.ts` and enforced by a test): reporting and blocking, verification, data export and deletion, being in other people's shortlists, the 3 weekly intros, messaging, the grievance page. Prices are in paise in `config/plans.ts`; the browser only sends a plan name. Prices include 18% GST as a draft assumption (to be checked; invoices are not built).
+
+**What is simulated and what is Razorpay.** Which one runs is chosen by the environment (`lib/payments/select.ts`):
+
+| Setting                                                         | What runs                                                                                                                               |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| No Razorpay keys (the default), or `PAYMENT_PROVIDER=simulated` | A fake checkout page labelled SIMULATED. Nobody is charged and there is no card form. It signs and verifies exactly like the real path. |
+| `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` (`rzp_test_...`)    | Razorpay Checkout in test mode: orders are created through Razorpay's API, card entry happens in Razorpay's window, test cards only.    |
+| Only one of the two keys                                        | An error ("payments are not set up correctly"), never a quiet fall-back to the fake checkout.                                           |
+| A key starting `rzp_live_`                                      | Refused, unless `ALLOW_LIVE_PAYMENTS=true`. That switch is not for this submission; real money is out of scope.                         |
+
+A **TEST MODE** ribbon is shown on every payment page in the first two cases. Demo accounts (only the seeded ones, and only while `DEMO_CONTROLS=true`) also get a "Grant me 30 days of Plus" button on `/plus`, so evaluators can try the perks without paying; it does not exist for real members.
+
+**How a payment becomes Plus.** The server creates the order (price from config, member from the session) and stores an `orders` row. After paying, two things can arrive and either may come first: the browser callback (a server action that checks the signature `HMAC-SHA256(order_id|payment_id, key_secret)` with a constant-time compare) and Razorpay's webhook at `/api/webhooks/razorpay` (signature `HMAC-SHA256(raw body, webhook_secret)` over the exact bytes received). Both call one database function, `grant_plus`, callable only by the server: it locks the order, checks the member, the amount and the currency, marks it paid exactly once and adds the days. A second call (a replayed webhook, a double click, the callback after the webhook) answers "already granted" and changes nothing. A tampered signature, someone else's order, a wrong amount or an unknown order grants nothing. Users can read their own orders but cannot write orders or `plus_until`.
+
+**Admin.** The dashboard has an orders block (orders, paid, not completed, paid total in test money, Plus members now, conversion = members who paid / active members) and `/admin/orders` lists the latest orders with masked ids (no card data exists anywhere to show). "Revoke Plus" ends someone's Plus and is written to the audit log. No refund is sent by the app: refund by hand in Razorpay's dashboard, then revoke. The draft Terms have a short refund paragraph.
+
+**Setting up Razorpay test mode** (needs a free Razorpay account; no money is involved):
+
+1. In the Razorpay dashboard switch to **Test Mode** and create API keys (Account and Settings > API keys). Put the key id (`rzp_test_...`) and secret in `.env.local` as `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`. Never commit them.
+2. Add a webhook (Account and Settings > Webhooks) with the URL `https://<your-app>/api/webhooks/razorpay`, a secret of your choice (put the same value in `RAZORPAY_WEBHOOK_SECRET`) and the events `payment.captured`, `order.paid` and `payment.failed`. For local testing, expose your machine with a tunnel and use that address, or skip the webhook: the browser callback alone still grants Plus.
+3. Restart the app, open `/plus`, choose a plan. In the Razorpay window use **Razorpay's published test card or test UPI details** from their documentation (search "Razorpay test card details" on razorpay.com/docs; I do not copy card numbers here). Success returns to `/plus/success`; failing a payment returns to `/plus/failed`.
+
+Not verified against the real Razorpay: the Orders API call, the Checkout window, webhook delivery and the exact webhook payload shapes (parsed from Razorpay's documented format and covered by tests built from that format). That needs one test-mode payment with real test keys.
+
 ## Testing
 
 There are three layers, from fast to realistic.
@@ -163,4 +191,4 @@ To try the demo data on the local stack: `npm run stack:up`, `npm run seed:local
 
 ## Current state
 
-Sign-up, login, logout, password reset, onboarding, photo upload, profile editing, pause and the simulated eLitmus verification exist. The seed script and a first admin area (dashboard and verification approvals) exist. The matching engine and the weekly drop (admin button, scheduled call, stats) exist, and members can answer their shortlist, with the woman-first rule and the chat cap enforced in the database. A chat opens on mutual interest and members can message, decide on day 3, close kindly, and chats expire on a schedule. Report, block, the moderation queue, data export, account deletion, consent management and the draft policy pages exist and are covered by the integration and browser tests. Payments do not exist yet. My product and engineering decisions are in `docs/decisions.md`, and third-party code is listed in `docs/credits.md`.
+Sign-up, login, logout, password reset, onboarding, photo upload, profile editing, pause and the simulated eLitmus verification exist. The seed script and a first admin area (dashboard and verification approvals) exist. The matching engine and the weekly drop (admin button, scheduled call, stats) exist, and members can answer their shortlist, with the woman-first rule and the chat cap enforced in the database. A chat opens on mutual interest and members can message, decide on day 3, close kindly, and chats expire on a schedule. Report, block, the moderation queue, data export, account deletion, consent management and the draft policy pages exist and are covered by the integration and browser tests. Plus and payments exist (Razorpay test mode or a simulated checkout, a webhook, idempotent grants, an admin orders view); the real Razorpay API has not been exercised. My product and engineering decisions are in `docs/decisions.md`, and third-party code is listed in `docs/credits.md`.

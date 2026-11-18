@@ -49,6 +49,9 @@ type CastMember = Pick<
   | "elitmusStatus"
 > & { handle: string };
 
+// The demo member who has Plus (see the demo logins in the README).
+export const PLUS_DEMO_HANDLE = "ananya";
+
 // 19 people across four cities, plus one admin. Bengaluru has the most so a
 // weekly drop there has a real pool; Gurugram is thin on purpose.
 const CAST: CastMember[] = [
@@ -998,6 +1001,10 @@ export const PUBLISHED_LOGINS = [
   {
     handle: "neha",
     role: "New member, Hyderabad: finished profile, nothing yet (the empty state)",
+  },
+  {
+    handle: "ananya",
+    role: "Woman, Bengaluru, with Plus: 5 chats, a full why-we-matched breakdown and second look",
   },
   { handle: "admin", role: "Admin: verification approvals and the dashboard" },
 ] as const;

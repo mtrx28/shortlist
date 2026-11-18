@@ -5,6 +5,7 @@ import { PHOTO_BUCKET } from "@/lib/photos";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { makeAvatarPng } from "./seed/avatar";
 import {
+  PLUS_DEMO_HANDLE,
   PUBLISHED_LOGINS,
   buildDemoProfiles,
   buildScenario,
@@ -204,6 +205,12 @@ async function seed(admin: SupabaseClient) {
           elitmus_status: p.elitmusStatus,
           elitmus_ref_hash: p.phId ? hashPhId(p.phId, hashSecret) : null,
           paused: p.paused,
+          // One demo member has Plus (a year), so its perks can be seen without
+          // buying. Re-seeding resets everyone else to the free plan.
+          plus_until:
+            p.handle === PLUS_DEMO_HANDLE
+              ? new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString()
+              : null,
           onboarding_completed_at: new Date().toISOString(),
         })
         .eq("id", userId),
