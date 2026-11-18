@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Home | Shortlist" };
 
-// Placeholder for signed-in users until the Shortlist screen exists. People
-// who have not finished onboarding are sent there first.
+// Signed-in home, with the way to the shortlist and chats. People who have
+// not finished onboarding are sent there first.
 export default async function HomePage() {
   const { profile, state } = await requireUserProfile();
 
@@ -24,8 +24,22 @@ export default async function HomePage() {
         Hello, {profile.display_name}
       </h1>
       <p className="text-muted-foreground text-sm">
-        Your profile is ready. Your first Shortlist comes next.
+        Your profile is ready. Your introductions arrive every Sunday evening.
       </p>
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href="/shortlist"
+          className="bg-primary text-primary-foreground inline-flex h-9 items-center rounded-lg px-4 text-sm font-medium"
+        >
+          Your shortlist
+        </Link>
+        <Link
+          href="/chat"
+          className="border-border inline-flex h-9 items-center rounded-lg border px-4 text-sm font-medium"
+        >
+          Chats
+        </Link>
+      </div>
       {profile.paused && (
         <p className="bg-muted rounded-md p-3 text-sm">
           Your profile is paused, so you will not get new introductions.
