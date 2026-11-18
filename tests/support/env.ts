@@ -18,6 +18,7 @@ export type TestEnv = {
   demoPassword: string;
   elitmusSecret: string;
   safetySecret: string;
+  webhookSecret: string; // signs the test webhooks the app verifies
 };
 
 export const ENV_FILE = ".env.test.local";
@@ -76,5 +77,6 @@ export function loadTestEnv(root = process.cwd()): TestEnv {
     demoPassword: need("DEMO_PASSWORD"),
     elitmusSecret: need("ELITMUS_HASH_SECRET"),
     safetySecret: need("SAFETY_HASH_SECRET"),
+    webhookSecret: need("RAZORPAY_WEBHOOK_SECRET"),
   };
 }

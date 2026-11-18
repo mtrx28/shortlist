@@ -8,6 +8,6 @@ export function middleware(request: NextRequest) {
 export const config = {
   // Skip static files, images, the health check and cron endpoints (they use a bearer secret, not a login); run on everything else.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/health|api/cron|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/health|api/cron|api/webhooks|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

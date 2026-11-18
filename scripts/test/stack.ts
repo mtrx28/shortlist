@@ -76,7 +76,11 @@ function writeEnv() {
     "DEMO_AUTO_VERIFY=false",
     "RAZORPAY_KEY_ID=",
     "RAZORPAY_KEY_SECRET=",
-    "RAZORPAY_WEBHOOK_SECRET=",
+    // Payments in the tests use the simulated provider. The webhook secret is a
+    // made-up test value: the tests sign webhooks with it, the app verifies with it.
+    "PAYMENT_PROVIDER=simulated",
+    "RAZORPAY_WEBHOOK_SECRET=local-test-webhook-secret-0123456789",
+    "ALLOW_LIVE_PAYMENTS=false",
     "",
   ];
   writeFileSync(join(root, ENV_FILE), lines.join("\n"));
