@@ -10,6 +10,7 @@ export const PROTECTED_PREFIXES = [
   "/chat",
   "/admin",
   "/account",
+  "/plus",
 ];
 
 // Pages only for signed-out people; signed-in users are sent to /home.

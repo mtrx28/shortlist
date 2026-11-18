@@ -100,7 +100,31 @@ export default function TermsPage() {
         </p>
       </Section>
 
-      <Section title="10. Contact">
+      <Section title="10. Plus and refunds (draft for demonstration)">
+        <p>
+          Shortlist Plus is a one-time purchase for a fixed period (30 or 90
+          days). It does not renew by itself and we do not store your card.
+          Safety tools, verification and the weekly introductions stay free
+          whether or not you buy Plus. In this demonstration the payments are
+          made in a test mode or a simulated checkout, so no real money moves.
+        </p>
+        <p>
+          If a real service launched on these terms, my draft rule is: you can
+          ask for a refund within 7 days of buying if you have not used the
+          extra features, and at any time if a payment was taken but Plus was
+          not switched on, or you were charged twice. Ask on the{" "}
+          <Link href="/grievance" className="underline">
+            grievance page
+          </Link>{" "}
+          and we will answer within the same targets as other complaints. A
+          refund goes back to the payment method you used, through the payment
+          company, and ends the Plus time that was refunded. This is a draft and
+          must be checked against the law and the payment company&apos;s rules
+          before a real launch.
+        </p>
+      </Section>
+
+      <Section title="11. Contact">
         <p>
           Questions or complaints: the{" "}
           <Link href="/grievance" className="underline">

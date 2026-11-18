@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 import { homeRedirect } from "@/lib/onboarding";
+import { isPlus } from "@/lib/plus";
 import { requireUserProfile } from "@/lib/profile";
 
 // Reads the session, so it must never be prerendered at build time.
@@ -38,6 +39,14 @@ export default async function HomePage() {
           className="border-border inline-flex h-9 items-center rounded-lg border px-4 text-sm font-medium"
         >
           Chats
+        </Link>
+        <Link
+          href="/plus"
+          className="border-border inline-flex h-9 items-center rounded-lg border px-4 text-sm font-medium"
+        >
+          {isPlus(profile.plus_until, new Date())
+            ? "Your Plus"
+            : "Shortlist Plus"}
         </Link>
       </div>
       {profile.paused && (
