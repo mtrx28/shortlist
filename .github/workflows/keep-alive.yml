@@ -17,8 +17,12 @@ jobs:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
-            echo "Set the APP_URL and CRON_SECRET repository secrets first."
+          if [ -z "$APP_URL" ]; then
+            echo "::error title=APP_URL is not set::Add the APP_URL repository secret (the deployed address, for example https://your-app.vercel.app). See docs/deploy.md, step 6."
+            exit 1
+          fi
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error title=CRON_SECRET is not set::Add the CRON_SECRET repository secret (the same value as CRON_SECRET in the app's environment). See docs/deploy.md, step 6."
             exit 1
           fi
           base="${APP_URL%/}"

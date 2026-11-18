@@ -8,6 +8,12 @@ export function getSupabaseEnv() {
   return { url, anonKey };
 }
 
+// The public address of the app. NEXT_PUBLIC_APP_URL wins; on Vercel the
+// production domain it provides is the next best thing, so link previews and
+// the sitemap-style URLs are right even if the variable was forgotten.
 export function getAppUrl() {
-  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (vercel) return `https://${vercel}`;
+  return "http://localhost:3000";
 }
