@@ -590,89 +590,71 @@ describe("orders", () => {
 });
 
 describe("reports", () => {
-  it("lets a reporter file a report about someone they can see", async () => {
-    await actAs(ids.alice, () =>
-      db.query(
-        `insert into public.reports (reporter_id, target_id, reason, details) values ($1, $2, 'scam', 'spam')`,
-        [ids.alice, ids.bob],
+  // Reports are written by report_user() (service role) since the safety
+  // migration; the full rules are tested in tests/rls/safety.test.ts. Here:
+  // what a signed-in user can and cannot do to the table itself.
+  it("does not let a user write to reports directly", async () => {
+    await expect(
+      actAs(ids.alice, () =>
+        db.query(
+          `insert into public.reports (reporter_id, target_id, reason, details) values ($1, $2, 'scam', 'spam')`,
+          [ids.alice, ids.bob],
+        ),
       ),
-    );
-    expect(
-      await rows(`select id from public.reports where reporter_id = $1`, [
-        ids.alice,
-      ]),
-    ).toHaveLength(1);
+    ).rejects.toThrow(/permission denied/);
+    await expect(
+      actAs(ids.alice, () =>
+        db.query(`update public.reports set status = 'dismissed'`),
+      ),
+    ).rejects.toThrow(/permission denied/);
   });
 
   it("does not let the reporter read reports back", async () => {
     expect(
-      await actAs(ids.alice, () => rows(`select * from public.reports`)),
+      await actAs(ids.alice, () =>
+        rows(`select id, details from public.reports`),
+      ),
     ).toHaveLength(0);
   });
 
   it("does not let other users read reports, even ones about them", async () => {
-    // Bob's earlier report is about Alice; Alice must not see it.
+    // The seeded report is Bob's, about Alice; Alice must not see it.
     expect(
-      await actAs(ids.carol, () => rows(`select * from public.reports`)),
+      await actAs(ids.carol, () => rows(`select id from public.reports`)),
     ).toHaveLength(0);
     expect(
       await actAs(ids.alice, () =>
-        rows(`select * from public.reports where target_id = $1`, [ids.alice]),
+        rows(`select id from public.reports where target_id = $1`, [ids.alice]),
       ),
     ).toHaveLength(0);
   });
 
-  it("lets an admin read and update the queue", async () => {
+  it("lets an admin read the queue, but not the evidence column", async () => {
     const all = await actAs(ids.admin, () =>
-      rows(`select id from public.reports`),
+      rows(`select id, details from public.reports`),
     );
-    expect(all.length).toBeGreaterThanOrEqual(2);
-    await actAs(ids.admin, () =>
-      db.query(`update public.reports set status = 'ack', ack_at = now()`),
-    );
-    const open = await rows(
-      `select count(*)::int as n from public.reports where status = 'ack'`,
-    );
-    expect(open[0].n).toBeGreaterThanOrEqual(2);
+    expect(all.length).toBeGreaterThanOrEqual(1);
+    await expect(
+      actAs(ids.admin, () => rows(`select evidence from public.reports`)),
+    ).rejects.toThrow(/permission denied/);
   });
 
-  it("does not let a normal user change report status", async () => {
-    // The status column is grantable, but the policy needs is_admin().
-    await actAs(ids.alice, () =>
-      db.query(`update public.reports set status = 'dismissed'`),
-    );
-    expect(
-      await rows(`select id from public.reports where status = 'dismissed'`),
-    ).toHaveLength(0);
-  });
-
-  it("refuses reports filed under someone else's name or about a stranger", async () => {
+  it("does not let even an admin change a report straight from the API", async () => {
     await expect(
-      actAs(ids.alice, () =>
-        db.query(
-          `insert into public.reports (reporter_id, target_id, reason) values ($1, $2, 'other')`,
-          [ids.bob, ids.alice],
-        ),
+      actAs(ids.admin, () =>
+        db.query(`update public.reports set status = 'ack', ack_at = now()`),
       ),
-    ).rejects.toThrow(/row-level security/);
-    await expect(
-      actAs(ids.carol, () =>
-        db.query(
-          `insert into public.reports (reporter_id, target_id, reason) values ($1, $2, 'other')`,
-          [ids.carol, ids.bob],
-        ),
-      ),
-    ).rejects.toThrow(/row-level security/);
+    ).rejects.toThrow(/permission denied/);
   });
 });
 
 describe("blocks", () => {
-  it("lets the blocker create and see a block, but not the blocked person", async () => {
-    await actAs(ids.dave, () =>
-      db.query(
-        `insert into public.blocks (blocker_id, blocked_id) values ($1, $2)`,
-        [ids.dave, ids.erin],
-      ),
+  it("lets the blocker see a block, but not the blocked person", async () => {
+    // Blocks are created by the server (block_user); here the row is made the
+    // way that function does it.
+    await db.query(
+      `insert into public.blocks (blocker_id, blocked_id) values ($1, $2)`,
+      [ids.dave, ids.erin],
     );
     expect(
       await actAs(ids.dave, () => rows(`select * from public.blocks`)),
@@ -695,15 +677,22 @@ describe("blocks", () => {
     ).toHaveLength(0);
   });
 
-  it("refuses a block filed in someone else's name", async () => {
-    await expect(
-      actAs(ids.carol, () =>
-        db.query(
-          `insert into public.blocks (blocker_id, blocked_id) values ($1, $2)`,
-          [ids.bob, ids.carol],
+  it("does not let a user create a block straight from the API", async () => {
+    // It would skip the daily limit and leave the chat open; block_user()
+    // is the only way (see tests/rls/safety.test.ts).
+    for (const [as, blocker, blocked] of [
+      [ids.carol, ids.carol, ids.bob],
+      [ids.carol, ids.bob, ids.carol],
+    ]) {
+      await expect(
+        actAs(as, () =>
+          db.query(
+            `insert into public.blocks (blocker_id, blocked_id) values ($1, $2)`,
+            [blocker, blocked],
+          ),
         ),
-      ),
-    ).rejects.toThrow(/row-level security/);
+      ).rejects.toThrow(/permission denied/);
+    }
   });
 
   it("lets the blocker remove the block, and only the blocker", async () => {
