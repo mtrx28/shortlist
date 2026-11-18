@@ -29,7 +29,7 @@ Open http://localhost:3000. The health check is at http://localhost:3000/api/hea
 
 ## Database and sign-in
 
-The schema is in `supabase/migrations/`: one file for the tables, constraints and the signup trigger, one for row level security (RLS), the rules that say which rows each user may read or write, one for onboarding (the completed flag, limits on profile data, the photo bucket and its policies), one for approving verifications in a single transaction, and one that saves a weekly drop (`write_drop`). There is no public browse of profiles: you can only read your own, or someone you were shown in an intro or are chatting with. Users cannot change their own `role`, Plus status or verification status, because those columns are not writable for them.
+The schema is in `supabase/migrations/`: one file for the tables, constraints and the signup trigger, one for row level security (RLS), the rules that say which rows each user may read or write, one for onboarding (the completed flag, limits on profile data, the photo bucket and its policies), one for approving verifications in a single transaction, one that saves a weekly drop (`write_drop`), and one for answering intros and opening chats (`decide_intro`). There is no public browse of profiles: you can only read your own, or someone you were shown in an intro or are chatting with. Users cannot change their own `role`, Plus status or verification status, because those columns are not writable for them.
 
 Sign-in uses Supabase Auth (email and password, with a confirmation email). The 18+ check happens in the sign-up server action and again in a database trigger, so calling the API directly does not skip it. Sign-up also needs ticking the Terms and Privacy boxes; the version agreed to is stored with a timestamp. The `/terms` and `/privacy` pages are placeholders for now.
 
@@ -93,6 +93,23 @@ To run it:
 
 The seed script now also removes a drop for the two demo weeks before re-creating its demo drops, so you can run "Run drop now" and later seed again.
 
+## Shortlist and opening a chat
+
+Members see their weekly intros at `/shortlist` (linked from `/home`): the person's card, "why we matched", how many intros are left, a countdown to the end of the intro and to the next drop, and Pass or Interested with an optional note of up to 140 characters (no links, email addresses, phone numbers or handles; the check is `lib/validators/contact-info.ts`). Photos are signed with the member's own session, so the storage rules still apply. There are friendly empty states for no drop yet, nobody found this week, everything answered, intros that ended, and a paused profile. A "Second look" box is a disabled placeholder that says it comes with Plus. `/chat` is a plain list of open chats with a countdown; messaging itself is not built yet.
+
+The rules, all in `config/shortlist.ts`:
+
+- **A chat opens only when both people said Interested** in each other, in the same drop. One side's interest alone never opens anything.
+- **Woman-first:** in a man-woman pair the woman is the opener (she writes first). A man's interest stays quietly pending until she answers, and the screen only says "if it is mutual, a chat opens". It never says whether she passed, and a pass is silent. For other pairs (two women, two men, anyone with a non-binary person) there is no such rule: plain mutual interest opens the chat and whoever said Interested first writes first.
+- **Cap:** at most 3 chats open at once (5 with Plus; "open" and "kept" both count), for both people. If you are at your cap you cannot say Interested (nothing is saved; you can still pass) and the screen explains why. If the other person is at their cap, your interest is saved with the same neutral message as "waiting", and the chat opens the next time either of you opens Shortlist or Chats with a free slot.
+- **Window:** a new chat is open for 72 hours. An intro can be answered until the next drop (Sunday 20:00 India time); after that it counts as expired. There is no expiry job yet; the check happens when someone answers.
+
+The answer is saved by one database function, `decide_intro`, in one transaction. It checks that the intro is yours, new and not expired, saves the answer, and opens the chat if the rules above allow. Two people are locked in a fixed order while it runs, so a double click, or both people answering at the same moment, gives exactly one chat (the unique "one live chat per pair" index is a second safety net) and a repeated call just returns the same chat. Only the server can call it (it uses the service role and takes the member id from the verified session); the pure TypeScript twin in `lib/shortlist/decide.ts` is tested against it case by case. Members can read only their own intro rows, so nobody can see the other side's answer.
+
+Events logged (no personal data in them): `intro_viewed`, `intro_interested`, `intro_passed`, `conversation_opened`, `cap_blocked`.
+
+After pulling this, apply the new migration with `npx supabase db push`.
+
 ## Current state
 
-Sign-up, login, logout, password reset, onboarding, photo upload, profile editing, pause and the simulated eLitmus verification exist. The seed script and a first admin area (dashboard and verification approvals) exist. The matching engine and the weekly drop (admin button, scheduled call, stats) exist, but there is no screen yet where members see their shortlist. Chat and payments do not exist yet. My product and engineering decisions are in `docs/decisions.md`, and third-party code is listed in `docs/credits.md`.
+Sign-up, login, logout, password reset, onboarding, photo upload, profile editing, pause and the simulated eLitmus verification exist. The seed script and a first admin area (dashboard and verification approvals) exist. The matching engine and the weekly drop (admin button, scheduled call, stats) exist, and members can answer their shortlist, with the woman-first rule and the chat cap enforced in the database. A chat opens on mutual interest, but there is no messaging yet (the `/chat` page only lists open chats), and payments do not exist yet. My product and engineering decisions are in `docs/decisions.md`, and third-party code is listed in `docs/credits.md`.

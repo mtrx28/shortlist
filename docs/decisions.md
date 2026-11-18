@@ -180,6 +180,8 @@ Status: ACCEPTED
 
 **Why.** Safety is the product's trust engine and part of the legal duty of an intermediary.
 
+**As built for the shortlist screen.** I made "women-first" mean two concrete things, not "her yes alone opens a chat". A chat opens only when both people said interested (same drop), so a man's interest alone never opens one and he never learns whether she passed. And in a man-woman pair the woman is the opener, so she writes first. For every other pair (two women, two men, anyone with a non-binary person) there is no woman-first rule: plain mutual interest opens the chat and whoever said interested first writes first. This replaces my earlier line "the recipient of the intro opens the chat", which does not work when both people are shown each other. The rule is a config switch (`womanOpens` in `config/shortlist.ts`). The 3-chat cap (5 with Plus) applies to both people; if I am at my cap I cannot say interested, and if the other person is at theirs my interest waits and the chat opens when a slot is free.
+
 **Trade-offs.** Moderation capacity in a live product needs people; in this deployment it is an admin page and written process. Automated text filters are limited to simple patterns (phone numbers, links) in the MVP.
 
 **Likely questions.** *What if someone shares a number in chat?* It is allowed after consent but the platform warns first; the MVP flags pattern-based sharing in the first message. *How do you handle deepfake or fake photos?* Not solved in the MVP: verified identity helps, and I list photo liveness checks as future work.
