@@ -11,11 +11,12 @@ import { PHOTO_BUCKET } from "@/lib/photos";
 // The columns a signed-in user may read from their own profile row.
 // (dob and elitmus_ref_hash are never readable, even by their owner.)
 export const MY_PROFILE_COLUMNS =
-  "id, display_name, gender, interested_in, city, intent, batch_year, college_tier, occupation, bio_prompts, values_answers, interests, photos, verified_email, elitmus_status, paused, onboarding_completed_at";
+  "id, role, display_name, gender, interested_in, city, intent, batch_year, college_tier, occupation, bio_prompts, values_answers, interests, photos, verified_email, elitmus_status, paused, onboarding_completed_at";
 
 export type MyProfile = OnboardingProfile & {
   id: string;
   display_name: string;
+  role: "user" | "admin";
   college_tier: string | null;
   verified_email: boolean;
   elitmus_status: "none" | "pending" | "verified";

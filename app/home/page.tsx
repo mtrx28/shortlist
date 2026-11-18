@@ -31,6 +31,13 @@ export default async function HomePage() {
           Your profile is paused, so you will not get new introductions.
         </p>
       )}
+      {profile.role === "admin" && (
+        <p className="text-sm">
+          <Link href="/admin" className="underline">
+            Admin area
+          </Link>
+        </p>
+      )}
       <p className="text-sm">
         <Link href="/account/profile" className="underline">
           Edit your profile
