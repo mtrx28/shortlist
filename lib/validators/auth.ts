@@ -64,9 +64,25 @@ export type FormState = {
   error?: string;
   message?: string;
   fieldErrors?: Record<string, string[] | undefined>;
+  // What the person typed (never passwords). React 19 clears a form after its
+  // action runs, so without this a failed login would also wipe the email.
+  values?: Record<string, string>;
 };
 
+// Picks the named text fields out of a submitted form, to hand back on error.
+export function echoFields(form: FormData, names: string[]) {
+  const values: Record<string, string> = {};
+  for (const name of names) {
+    const v = form.get(name);
+    if (typeof v === "string") values[name] = v;
+  }
+  return values;
+}
+
 // Turns a failed zod parse into the shape the forms display.
-export function toFormState(error: z.ZodError): FormState {
-  return { fieldErrors: z.flattenError(error).fieldErrors };
+export function toFormState(
+  error: z.ZodError,
+  values?: Record<string, string>,
+): FormState {
+  return { fieldErrors: z.flattenError(error).fieldErrors, values };
 }

@@ -14,6 +14,24 @@ import {
 } from "@/lib/photos";
 import type { SignedPhoto } from "@/lib/profile";
 
+// Gives up on a promise that never settles. The compression library can hang
+// on an unusual file instead of failing, and the screen must not wait forever.
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("timeout")), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 // Add and remove photos. Each picked file is checked, shrunk and re-encoded
 // in the browser (which also drops EXIF data such as GPS location), uploaded
 // to the private bucket, and then the list is saved by a server action.
@@ -52,13 +70,20 @@ export function PhotoManager({
           continue;
         }
         // Re-drawing the picture onto a canvas is what removes the EXIF data.
-        const small = await imageCompression(file, {
-          maxSizeMB: 0.8,
-          maxWidthOrHeight: 1600,
-          useWebWorker: true,
-          fileType: "image/webp",
-          preserveExif: false,
-        });
+        const small = await withTimeout(
+          imageCompression(file, {
+            maxSizeMB: 0.8,
+            maxWidthOrHeight: 1600,
+            // No web worker: the library's worker would download its own code
+            // from a public CDN, which our security policy (and privacy) rule
+            // out, and the page would wait forever. Photos are small enough to
+            // shrink on the main thread.
+            useWebWorker: false,
+            fileType: "image/webp",
+            preserveExif: false,
+          }),
+          45_000,
+        );
         const path = buildPhotoPath(userId, crypto.randomUUID());
         const { error: uploadError } = await supabase.storage
           .from(PHOTO_BUCKET)

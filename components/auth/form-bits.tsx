@@ -29,6 +29,11 @@ export function Field(props: {
         type={props.type ?? "text"}
         autoComplete={props.autoComplete}
         max={props.max}
+        defaultValue={
+          props.type === "password"
+            ? undefined
+            : props.state.values?.[props.name]
+        }
         required
         aria-invalid={errors ? true : undefined}
         className={inputClass}

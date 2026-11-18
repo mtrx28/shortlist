@@ -7,6 +7,7 @@ import { logEvent } from "@/lib/events";
 import { safeNextPath } from "@/lib/safe-redirect";
 import { createClient } from "@/lib/supabase/server";
 import {
+  echoFields,
   forgotPasswordSchema,
   loginSchema,
   resetPasswordSchema,
@@ -26,8 +27,9 @@ export async function signupAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const typed = echoFields(formData, ["displayName", "email", "dob"]);
   const parsed = signupSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return toFormState(parsed.error);
+  if (!parsed.success) return toFormState(parsed.error, typed);
 
   const supabase = await createClient();
   if (!supabase) return NOT_CONFIGURED;
@@ -52,7 +54,10 @@ export async function signupAction(
   if (error) {
     // The database also refuses under-18s and missing consent. We already
     // checked both above, so anything reaching here is a general failure.
-    return { error: "We could not create your account. Please try again." };
+    return {
+      error: "We could not create your account. Please try again.",
+      values: typed,
+    };
   }
 
   await logEvent("signup", data.user?.id ?? null);
@@ -65,8 +70,9 @@ export async function loginAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const typed = echoFields(formData, ["email"]);
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return toFormState(parsed.error);
+  if (!parsed.success) return toFormState(parsed.error, typed);
 
   const supabase = await createClient();
   if (!supabase) return NOT_CONFIGURED;
@@ -74,10 +80,13 @@ export async function loginAction(
   const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) {
     if (error.code === "email_not_confirmed") {
-      return { error: "Please confirm your email first. Check your inbox." };
+      return {
+        error: "Please confirm your email first. Check your inbox.",
+        values: typed,
+      };
     }
     // One message for wrong email and wrong password.
-    return { error: "Email or password is incorrect." };
+    return { error: "Email or password is incorrect.", values: typed };
   }
 
   await logEvent("login", data.user.id);

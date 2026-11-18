@@ -638,10 +638,6 @@ function MessageBubble({
   onRetry: () => void;
   onRemove: () => void;
 }) {
-  const time = new Date(message.createdAt).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
   return (
     <div className={mine ? "flex justify-end" : "flex justify-start"}>
       <div
@@ -658,7 +654,7 @@ function MessageBubble({
           }
         >
           {message.status === "sending" && "Sending..."}
-          {message.status === "sent" && time}
+          {message.status === "sent" && <LocalTime iso={message.createdAt} />}
           {message.status === "failed" && (
             <>
               Not sent.{" "}
@@ -674,4 +670,21 @@ function MessageBubble({
       </div>
     </div>
   );
+}
+
+// The time of a message in the READER's time zone and language. The server
+// does not know them (it would format in its own, which differs from the
+// browser's and makes React complain that the page does not match), so the
+// time is filled in by the browser after the page has loaded.
+function LocalTime({ iso }: { iso: string }) {
+  const [text, setText] = useState("");
+  useEffect(() => {
+    setText(
+      new Date(iso).toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+    );
+  }, [iso]);
+  return <time dateTime={iso}>{text}</time>;
 }
