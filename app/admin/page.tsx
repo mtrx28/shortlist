@@ -1,5 +1,10 @@
 import Link from "next/link";
 import { formatRupees } from "@/config/plans";
+import {
+  buildMetricCards,
+  parseRawMetrics,
+  type MetricCard,
+} from "@/lib/admin/metrics";
 import { summarizeOrders, type OrderRow } from "@/lib/admin/orders-stats";
 import { requireAdmin } from "@/lib/admin/require-admin";
 import { countByName } from "@/lib/admin/stats";
@@ -85,6 +90,11 @@ export default async function AdminDashboardPage() {
     .limit(5000);
   const byName = countByName(events ?? []);
 
+  // The headline cards: totals only, worked out by one database function.
+  const { data: rawMetrics } = await supabase.rpc("admin_metrics");
+  const parsed = parseRawMetrics(rawMetrics);
+  const metricCards: MetricCard[] = parsed ? buildMetricCards(parsed) : [];
+
   const cards: [string, number | null][] = [
     ["All profiles", total],
     ["Finished onboarding", onboarded],
@@ -98,6 +108,37 @@ export default async function AdminDashboardPage() {
   return (
     <section className="space-y-8">
       <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+
+      <div>
+        <h2 className="mb-3 text-base font-medium">At a glance</h2>
+        {metricCards.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            The metrics are not available yet. Apply the latest database
+            migration.
+          </p>
+        ) : (
+          <dl
+            className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+            data-testid="metrics-cards"
+          >
+            {metricCards.map((card) => (
+              <div
+                key={card.id}
+                className="rounded-lg border p-3"
+                data-testid={`metric-${card.id}`}
+              >
+                <dt className="text-muted-foreground text-xs">{card.label}</dt>
+                <dd className="text-2xl font-semibold">{card.value}</dd>
+                {card.note && (
+                  <dd className="text-muted-foreground mt-1 text-xs">
+                    {card.note}
+                  </dd>
+                )}
+              </div>
+            ))}
+          </dl>
+        )}
+      </div>
 
       <div>
         <h2 className="mb-3 text-base font-medium">Users</h2>
