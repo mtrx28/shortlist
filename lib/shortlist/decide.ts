@@ -51,6 +51,9 @@ export type DecideInput = {
   };
   // An open or kept chat between the two already exists.
   hasLiveChat: boolean;
+  // A chat already came from these two intros and has ended. One chat per
+  // mutual interest: it is not opened again.
+  hadChatFromTheseIntros?: boolean;
 };
 
 export type RejectReason =
@@ -62,7 +65,7 @@ export type DecideOutcome =
   | { kind: "viewer_at_cap" }
   | {
       kind: "interest_saved";
-      reason: "waiting" | "other_at_cap" | "unavailable";
+      reason: "waiting" | "other_at_cap" | "unavailable" | "already_chatted";
     }
   | { kind: "already_open" }
   | { kind: "opened"; opener: "viewer" | "other" };
@@ -123,6 +126,9 @@ export function decideIntro(
     return { kind: "interest_saved", reason: "unavailable" };
   }
   if (input.hasLiveChat) return { kind: "already_open" };
+  if (input.hadChatFromTheseIntros) {
+    return { kind: "interest_saved", reason: "already_chatted" };
+  }
   if (viewer.openChats >= viewer.cap) return { kind: "viewer_at_cap" };
   if (other.openChats >= other.cap) {
     return { kind: "interest_saved", reason: "other_at_cap" };

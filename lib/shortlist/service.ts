@@ -42,7 +42,8 @@ export function outcomeFromResult(
       if (
         raw.reason === "waiting" ||
         raw.reason === "other_at_cap" ||
-        raw.reason === "unavailable"
+        raw.reason === "unavailable" ||
+        raw.reason === "already_chatted"
       ) {
         return { kind: "interest_saved", reason: raw.reason };
       }
