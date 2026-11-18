@@ -1,39 +1,122 @@
 # Shortlist
 
-Shortlist is a slow dating app for people verified through eLitmus: three curated introductions a week instead of an endless feed. This is my submission project, and it is still being built.
+Shortlist is a slow dating app for people verified through eLitmus: three curated introductions a week instead of an endless feed, a cap on open chats, a 72 hour reply window, and an honest way to end a conversation. It is aimed at first-job migrants aged 22 to 29 who have tried swipe apps and left. I built it as my submission project, and the reasoning behind every choice is written down in [`docs/decisions.md`](docs/decisions.md).
+
+- **Live demo and evaluator guide:** `/demo` on the deployed site (ready-made logins and a five-minute script). Deploy it yourself with [`docs/deploy.md`](docs/deploy.md).
+- **How it is built:** [`docs/architecture.md`](docs/architecture.md).
+- **Third-party code and assets:** [`docs/credits.md`](docs/credits.md).
+
+## The rules
+
+1. **3 introductions a week**, every Sunday at 8 pm India time (5 with Plus). No feed and no swiping.
+2. **3 chats open at once** (5 with Plus). Open and kept chats both count.
+3. **72 hours to reply.** A chat with no first message, no reply, or no decision by then ends by itself.
+4. **Day 3: Keep or Close kindly.** From hour 48, once both have written, each person chooses. Closing sends one of four blame-free notes. Nobody sees the other's choice unless both keep.
+5. **Women write first** in a woman-man pair. A man's interest waits quietly; a pass is never announced.
+6. **No one is in more than 5 shortlists** in a week, so a few popular people do not collect all the attention.
+7. **Verified, not scored.** An optional eLitmus badge and batch year. The pH score is never asked for or shown.
+8. **Safety is never paywalled.** Report, block, verification, data export and deletion are free for everyone, and a test enforces it.
+
+## Stack
+
+Next.js 15 (App Router, TypeScript), Tailwind CSS 4 and shadcn/ui, Supabase (Postgres with row level security, Auth, Storage, Realtime), Zod for validation, Vitest and PGlite for unit and database tests, Playwright and axe-core for browser tests, GitHub Actions for CI and the scheduled jobs, Vercel for hosting, Razorpay (test mode) for payments.
 
 ## Run it locally
 
-You need Node.js 20 or newer.
+You need Node.js 20 or newer. For the integration and browser tests you also need Docker Desktop.
 
-```bash
-npm install
-cp .env.example .env.local   # Supabase values are only needed for sign-up and login
-npm run dev
-```
+1. Install the packages:
 
-Open http://localhost:3000. The health check is at http://localhost:3000/api/health.
+   ```bash
+   npm install
+   ```
 
-## Scripts
+2. Copy the settings file: `cp .env.example .env.local` (on Windows PowerShell: `Copy-Item .env.example .env.local`).
+3. Get a database. Either create a free Supabase project and put its URL, anon key and service role key in `.env.local`, then run `npx supabase link` and `npx supabase db push`; or, with Docker running, use the local stack (`npm run stack:up`), which writes its own settings to `.env.test.local`.
+4. Fill in at least `ELITMUS_HASH_SECRET` and `CRON_SECRET` (any long random strings; the command to make one is in `.env.example`) and, to load the demo members, `DEMO_PASSWORD` (8 or more characters). Optionally set `DEMO_CONTROLS=true` to show the demo clock panel.
+5. Load the demo data: `npm run seed` (against the project in `.env.local`) or `npm run seed:local` (against the local stack only; it refuses any other address).
+6. Start the app: `npm run dev`, then open http://localhost:3000. The health check is at http://localhost:3000/api/health.
 
-| Command                                           | What it does                                                           |
-| ------------------------------------------------- | ---------------------------------------------------------------------- |
-| `npm run dev`                                     | Start the dev server                                                   |
-| `npm run build`                                   | Production build                                                       |
-| `npm run lint`                                    | ESLint                                                                 |
-| `npm run typecheck`                               | TypeScript check, no output files                                      |
-| `npm test`                                        | Run the unit tests once (Vitest)                                       |
-| `npm run format`                                  | Format everything with Prettier                                        |
-| `npm run seed`                                    | Create or refresh the demo users                                       |
-| `npm run seed:reset`                              | Remove only the demo users                                             |
-| `npm run test:integration`                        | Integration tests against the local Supabase stack (needs Docker)      |
-| `npm run test:e2e`                                | Browser tests with Playwright (needs the stack and the app running)    |
-| `npm run test:all`                                | Starts the local stack and the app, runs both suites, stops everything |
-| `npm run stack:up` / `stack:reset` / `stack:down` | Start, rebuild or stop the local Supabase stack                        |
+Without the Supabase values the public pages still work and login says it is not set up.
+
+## Environment variables
+
+Names only live in [`.env.example`](.env.example); real values go in `.env.local` (git-ignored) or in Vercel and GitHub settings. Never commit them.
+
+| Variable                                 | Needed for                               | Notes                                                                                                     |
+| ---------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`               | everything with a database               | Supabase > Project settings > API.                                                                        |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`          | sign-in, reads under row level security  | Public key.                                                                                               |
+| `SUPABASE_SERVICE_ROLE_KEY`              | jobs, payments, moderation, the seed     | Server only. Skips all database rules; never in the browser.                                              |
+| `NEXT_PUBLIC_APP_URL`                    | email links, link previews               | `http://localhost:3000` locally, your domain when deployed.                                               |
+| `CRON_SECRET`                            | `/api/cron/*` and the GitHub schedules   | Empty means every cron endpoint refuses. Same value as the GitHub secret.                                 |
+| `ELITMUS_HASH_SECRET`                    | pH ID hashing                            | Long random string. Do not change it later.                                                               |
+| `SAFETY_HASH_SECRET`                     | the minimal safety record on deletion    | Optional; falls back to `ELITMUS_HASH_SECRET`.                                                            |
+| `DEMO_PASSWORD`                          | `npm run seed`                           | Shared password of the demo logins. Never committed.                                                      |
+| `DEMO_PASSWORD_PUBLIC`                   | the `/demo` page                         | Optional. If set (8+ characters) `/demo` prints it; otherwise it says "see the submission form / README". |
+| `DEMO_CONTROLS`                          | demo clock panel, "Grant me Plus" button | `true` only on a deployment with invented members.                                                        |
+| `DEMO_AUTO_VERIFY`                       | pH ID requests                           | `true` approves them at once. Leave off for real members.                                                 |
+| `PAYMENT_PROVIDER`                       | payments                                 | Empty (automatic), `simulated` or `razorpay`.                                                             |
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Razorpay test mode                       | `rzp_test_...` keys; set both or neither.                                                                 |
+| `RAZORPAY_WEBHOOK_SECRET`                | Razorpay webhook                         | The secret typed when adding the webhook.                                                                 |
+| `ALLOW_LIVE_PAYMENTS`                    | nothing, by design                       | Keep `false`. Real money is out of scope.                                                                 |
+
+GitHub repository secrets for the schedules: `APP_URL` and `CRON_SECRET`.
+
+## Test logins
+
+All demo members share one password. It is the value of `DEMO_PASSWORD` on whoever ran the seed; for the deployed demo it is on the submission form, and `/demo` prints it if `DEMO_PASSWORD_PUBLIC` is set. All of them are invented people.
+
+| Email                        | Who                         | What it shows                                                                                                                                                         |
+| ---------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `priya@demo.shortlist.test`  | Woman, Bengaluru            | A full shortlist of three, and a chat in progress                                                                                                                     |
+| `arjun@demo.shortlist.test`  | Man, Pune                   | A chat with about 4 hours left where Sneha wrote and he has not replied (reminder banner; replying opens the day-3 decision), and a woman who already showed interest |
+| `neha@demo.shortlist.test`   | New member, Hyderabad       | A finished profile with nothing yet (the empty state)                                                                                                                 |
+| `ananya@demo.shortlist.test` | Woman, Bengaluru, with Plus | The Plus perks: 5 chats at once, 5 intros a drop, the full "why we matched" breakdown and a second look                                                               |
+| `admin@demo.shortlist.test`  | Admin                       | The dashboard with metrics cards, verification approvals, reports, orders, the drop                                                                                   |
+
+Other demo members (`meera@`, `rohan@`, `lakshmi@` and so on) use the same password. To see sign-up and onboarding, create a new account.
+
+## Commands
+
+| Command                                           | What it does                                                        |
+| ------------------------------------------------- | ------------------------------------------------------------------- |
+| `npm run dev`                                     | Start the dev server                                                |
+| `npm run build` / `npm start`                     | Production build, and serve it                                      |
+| `npm run lint`                                    | ESLint                                                              |
+| `npm run typecheck`                               | TypeScript check, no output files                                   |
+| `npm run format`                                  | Format everything with Prettier                                     |
+| `npm test`                                        | Unit and database (PGlite) tests, no Docker                         |
+| `npm run test:integration`                        | Integration tests against the local Supabase stack (needs Docker)   |
+| `npm run test:e2e`                                | Browser tests with Playwright (needs the stack and the app running) |
+| `npm run test:all`                                | Starts the stack and the app, runs both suites, stops everything    |
+| `npm run stack:up` / `stack:reset` / `stack:down` | Start, rebuild or stop the local Supabase stack                     |
+| `npm run seed` / `seed:reset`                     | Create or refresh the demo data, or remove only the demo accounts   |
+| `npm run seed:local` / `seed:local:reset`         | The same, against the local stack only                              |
+| `npm run smoke -- <url>`                          | Check a deployed copy (see Deployment)                              |
+| `npm run icons`                                   | Redraw the app icons in `public/`                                   |
+
+Before you push: `npm run lint && npm run typecheck && npm test && npm run build`, and `npm run test:all` when Docker is available.
+
+## What is real and what is simulated
+
+| Real                                                                                    | Simulated or test-only                                                                                                                                       |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Sign-up with the 18+ check and versioned consent                                        | **eLitmus (pH) verification.** I have no access to eLitmus. The form checks the ID format and keeps a keyed hash; an admin (or `DEMO_AUTO_VERIFY`) approves. |
+| Matching, the weekly drop, the shortlist, the woman-first rule, the chat cap            | **Payments.** Razorpay in test mode, or a fake checkout when no keys are set. No real money moves.                                                           |
+| Chat with the 72 hour window, day-3 decision, kind closure, hourly expiry, live updates | **Email.** Needs an SMTP provider on the deployment; the demo logins need no email.                                                                          |
+| Report, block, the admin queue with audit log, data export, account deletion            | **The members.** Names, photos (generated pictures), prompts and chats in the seed are invented.                                                             |
+| Row level security and the database functions that enforce all of the above             | **The policy pages.** Drafts for demonstration; not legal advice and not reviewed by a lawyer.                                                               |
+
+Not verified by any test: the hosted Supabase project, a real Razorpay payment and webhook, real email delivery, real devices and screen readers, and behaviour under load.
+
+## How each part works
+
+The sections below describe each part in detail, in the order I built them.
 
 ## Database and sign-in
 
-The schema is in `supabase/migrations/`: one file for the tables, constraints and the signup trigger, one for row level security (RLS), the rules that say which rows each user may read or write, one for onboarding (the completed flag, limits on profile data, the photo bucket and its policies), one for approving verifications in a single transaction, one that saves a weekly drop (`write_drop`), one for answering intros and opening chats (`decide_intro`), and one for conversations (`send_message`, `record_decision`, `expire_conversations`, the unread marker and realtime). There is no public browse of profiles: you can only read your own, or someone you were shown in an intro or are chatting with. Users cannot change their own `role`, Plus status or verification status, because those columns are not writable for them.
+The schema is in `supabase/migrations/`: one file for the tables, constraints and the signup trigger, one for row level security (RLS), the rules that say which rows each user may read or write, one for onboarding (the completed flag, limits on profile data, the photo bucket and its policies), one for approving verifications in a single transaction, one that saves a weekly drop (`write_drop`), one for answering intros and opening chats (`decide_intro`), and one for conversations (`send_message`, `record_decision`, `expire_conversations`, the unread marker and realtime), then ones for safety and privacy (report, block, export, delete), for not re-opening ended chats, for Plus and payments, and for the admin metrics (`admin_metrics`). There are twelve in all; `npx supabase db push` applies them in order. There is no public browse of profiles: you can only read your own, or someone you were shown in an intro or are chatting with. Users cannot change their own `role`, Plus status or verification status, because those columns are not writable for them.
 
 Sign-in uses Supabase Auth (email and password, with a confirmation email). The 18+ check happens in the sign-up server action and again in a database trigger, so calling the API directly does not skip it. Sign-up also needs ticking the Terms and Privacy boxes; the version agreed to is stored with a timestamp. The `/terms` and `/privacy` pages are drafts I wrote for the demonstration (see "Safety, privacy and the legal pages" below).
 
@@ -58,21 +141,11 @@ The RLS tests run the migrations in an in-process Postgres (PGlite) and act as d
 - It is safe to run again: existing demo users are updated, and the chats, intros and events are rebuilt so the clocks (for example "4 hours left") are fresh.
 - It refuses to run when `NODE_ENV=production` unless you add the flag: `npm run seed -- --force-demo`.
 - Demo accounts use emails ending in `@demo.shortlist.test` and are flagged in `app_metadata`. `npm run seed:reset` deletes only accounts that have both marks, together with their photos and data. Real sign-ups are never touched.
-- The seeded intros and chats are written straight into the tables, because the screens that create them come in later milestones. The two drops are for the current and the previous week.
+- The seeded intros and chats are written straight into the tables, so every state (new, kept, closed, expired, reported) exists from the first minute. The two drops are for the current and the previous week.
 
-Demo logins (the password is the value of `DEMO_PASSWORD`):
+The demo logins are listed under "Test logins" above. To see onboarding, sign up with a new address.
 
-| Email                        | Who                         | What it shows                                                                                                                                                         |
-| ---------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `priya@demo.shortlist.test`  | Woman, Bengaluru            | A full shortlist of three, and a chat in progress                                                                                                                     |
-| `arjun@demo.shortlist.test`  | Man, Pune                   | A chat with about 4 hours left where Sneha wrote and he has not replied (reminder banner; replying opens the day-3 decision), and a woman who already showed interest |
-| `neha@demo.shortlist.test`   | New member, Hyderabad       | A finished profile with nothing yet (the empty state)                                                                                                                 |
-| `ananya@demo.shortlist.test` | Woman, Bengaluru, with Plus | The Plus perks: 5 chats at once, 5 intros a drop, the full "why we matched" breakdown and a second look (re-seeding gives her a year of Plus; nobody else has it)     |
-| `admin@demo.shortlist.test`  | Admin                       | The admin dashboard and verification approvals                                                                                                                        |
-
-The other demo members (for example `meera@`, `rohan@`, `lakshmi@` on the same domain) use the same password. To see onboarding, sign up with a new address.
-
-The admin area is at `/admin`; a link appears on `/home` for admins. Admin is a role stored on the profile, and users cannot set it themselves. Access is checked on the server for every page and every action, not only in the middleware, and anyone who is not an admin gets a plain 404. The dashboard shows profile counts by eLitmus status and counts of logged events. The verification page lists pending requests with Approve and Reject. These use the service role, only change rows that are still pending, and write a row to `audit_log` (who, what, which profile) and an event. The status change and the audit row are written together by one database function (`admin_review_verification`, callable only by the server), so one can never happen without the other. Reject sets the status back to not requested and clears the stored pH ID hash so the person can try again. Admins see an age, never a birth date, and only whether a pH ID hash exists, never the hash.
+The admin area is at `/admin`; a link appears on `/home` for admins. Admin is a role stored on the profile, and users cannot set it themselves. Access is checked on the server for every page and every action, not only in the middleware, and anyone who is not an admin gets a plain 404. The dashboard shows profile counts by eLitmus status and counts of logged events. The dashboard opens with eight metrics cards: members, verified via eLitmus, active chats, intros delivered, reply rate within 72 hours, keep versus close decisions, Plus members and revenue (always labelled test mode). They come from one database function, `admin_metrics`, which checks the caller is an active admin and returns totals only, never a row about a person (the two people's Keep/Close choices are hidden from every API role, so the totals are the only way an admin sees them). The percentages are worked out in `lib/admin/metrics.ts`. The verification page lists pending requests with Approve and Reject. These use the service role, only change rows that are still pending, and write a row to `audit_log` (who, what, which profile) and an event. The status change and the audit row are written together by one database function (`admin_review_verification`, callable only by the server), so one can never happen without the other. Reject sets the status back to not requested and clears the stored pH ID hash so the person can try again. Admins see an age, never a birth date, and only whether a pH ID hash exists, never the hash.
 
 To make a real account an admin, run this in the Supabase SQL editor: `update public.profiles set role = 'admin' where id = '<user id>';`
 
@@ -100,7 +173,7 @@ The seed script now also removes a drop for the two demo weeks before re-creatin
 
 ## Shortlist and opening a chat
 
-Members see their weekly intros at `/shortlist` (linked from `/home`): the person's card, "why we matched", how many intros are left, a countdown to the end of the intro and to the next drop, and Pass or Interested with an optional note of up to 140 characters (no links, email addresses, phone numbers or handles; the check is `lib/validators/contact-info.ts`). Photos are signed with the member's own session, so the storage rules still apply. There are friendly empty states for no drop yet, nobody found this week, everything answered, intros that ended, and a paused profile. A "Second look" box is a disabled placeholder that says it comes with Plus. `/chat` lists your chats (see the next section).
+Members see their weekly intros at `/shortlist` (linked from `/home`): the person's card, "why we matched", how many intros are left, a countdown to the end of the intro and to the next drop, and Pass or Interested with an optional note of up to 140 characters (no links, email addresses, phone numbers or handles; the check is `lib/validators/contact-info.ts`). Photos are signed with the member's own session, so the storage rules still apply. There are friendly empty states for no drop yet, nobody found this week, everything answered, intros that ended, and a paused profile. A "Second look" box is explained under Plus below. `/chat` lists your chats (see the next section).
 
 The rules, all in `config/shortlist.ts`:
 
@@ -183,12 +256,18 @@ There are three layers, from fast to realistic.
 
 1. `npm test` (about 10 seconds, no Docker): unit tests and the database tests, which run every migration inside an in-process Postgres (PGlite) and act as different users.
 2. `npm run test:integration`: real `supabase-js` clients against a real local Supabase stack (Postgres, auth, PostgREST, Realtime, Storage, mail catcher). It covers sign-up with the confirmation email, row level security from real clients, storage rules, the chat functions under true parallelism, Realtime delivery, the cron endpoints over HTTP, account deletion against real storage, and the seed script.
-3. `npm run test:e2e`: Playwright drives the real app in Chromium (desktop and a phone-sized screen), including an accessibility check with axe-core on the key pages.
+3. `npm run test:e2e`: Playwright drives the real app in Chromium (desktop and a Pixel 5 sized screen), including an accessibility check with axe-core on the landing page, the demo guide, the shortlist, chat, Plus and admin pages.
 
 To run layers 2 and 3 you need Docker running. `npm run test:all` does everything: starts the stack, rebuilds its database from the migrations, builds and starts the app, runs both suites and stops it all (`--keep-stack` leaves the containers running). The settings of the local stack go into `.env.test.local` (written by `npm run stack:up`, git-ignored). The test tools read only that file and refuse to run if the Supabase address is not on this machine, so they can never touch the real project. The app for the tests is built into `.next-test`, separate from a normal build. A manually started GitHub workflow (`.github/workflows/e2e.yml`, also on pull requests to main) runs the same thing in CI.
 
 To try the demo data on the local stack: `npm run stack:up`, `npm run seed:local`, then `npm run seed:local:reset` to remove it again.
 
-## Current state
+## Deployment
 
-Sign-up, login, logout, password reset, onboarding, photo upload, profile editing, pause and the simulated eLitmus verification exist. The seed script and a first admin area (dashboard and verification approvals) exist. The matching engine and the weekly drop (admin button, scheduled call, stats) exist, and members can answer their shortlist, with the woman-first rule and the chat cap enforced in the database. A chat opens on mutual interest and members can message, decide on day 3, close kindly, and chats expire on a schedule. Report, block, the moderation queue, data export, account deletion, consent management and the draft policy pages exist and are covered by the integration and browser tests. Plus and payments exist (Razorpay test mode or a simulated checkout, a webhook, idempotent grants, an admin orders view); the real Razorpay API has not been exercised. My product and engineering decisions are in `docs/decisions.md`, and third-party code is listed in `docs/credits.md`.
+Short version: create the Supabase project and run `npx supabase db push`; import the repository into Vercel and set the environment variables; set the Supabase Site URL and Redirect URLs to the deployed address; add the GitHub secrets `APP_URL` and `CRON_SECRET`; seed the demo data once; run `npm run smoke -- https://your-app`. The exact steps, every variable and a post-deploy checklist are in [`docs/deploy.md`](docs/deploy.md).
+
+The Hobby plan on Vercel is enough: the schedules run from GitHub Actions (`.github/workflows/`), not from Vercel cron.
+
+## Credits
+
+Libraries, fonts and services are listed with their licences in [`docs/credits.md`](docs/credits.md). The avatars, icons and the social preview image are drawn by code in this repository, so they carry no third-party artwork.
