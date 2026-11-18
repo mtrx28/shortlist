@@ -558,6 +558,8 @@ export type DemoConversation = {
   a_decision: "keep" | "close" | null;
   b_decision: "keep" | "close" | null;
   closed_reason: string | null;
+  closed_by: string | null;
+  closed_at: string | null;
 };
 
 export type DemoMessage = {
@@ -718,7 +720,9 @@ const CONVO_SPECS: ConvoSpec[] = [
     ],
   },
   {
-    // Close to the end of the 72 hour window, nobody has decided yet.
+    // Close to the end of the 72 hour window. Sneha wrote first and Arjun has
+    // not replied yet, so Arjun sees the reminder banner; once he replies, the
+    // day-3 decision opens straight away (68 hours in).
     key: "sneha-arjun",
     a: "sneha",
     b: "arjun",
@@ -731,12 +735,10 @@ const CONVO_SPECS: ConvoSpec[] = [
         67.5,
         "Hi Arjun! Quick question: Sinhagad at sunrise or a lazy cafe morning?",
       ],
-      ["arjun", 60, "Sunrise, but only if there is tea at the top. You?"],
-      ["sneha", 59, "There is always tea at the top. Deal."],
       [
-        "arjun",
-        45,
-        "Sorry for the slow reply, work was a lot. Still keen to chat!",
+        "sneha",
+        40,
+        "No rush at all, but I would love to hear which one you pick.",
       ],
     ],
   },
@@ -896,6 +898,11 @@ export function buildScenario(
       a_decision: spec.aDecision ?? null,
       b_decision: spec.bDecision ?? null,
       closed_reason: spec.closedReason ?? null,
+      closed_by: spec.status === "closed" ? id(spec.a) : null,
+      closed_at:
+        spec.status === "closed" || spec.status === "expired"
+          ? new Date(opened + WINDOW_HOURS * HOUR).toISOString()
+          : null,
     });
     for (const [who, h, body] of spec.messages) {
       messages.push({
